@@ -13,7 +13,7 @@ import { Quote, QuoteLineItem, Unit } from '../types';
 export function QuoteBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { quotes, addQuote, updateQuote, clients, products } = useStore();
+  const { quotes, addQuote, updateQuote, clients, products, settings } = useStore();
 
   const isEditing = id && id !== 'new';
   
@@ -28,8 +28,8 @@ export function QuoteBuilder() {
     discountType: 'flat',
     discountValue: 0,
     discountAmount: 0,
-    applyGst: true,
-    gstRate: 18,
+    applyGst: settings.features.defaultGstEnabled,
+    gstRate: settings.features.defaultGstRate,
     gstAmount: 0,
     grandTotal: 0,
     notes: 'Installation and delivery not included. \nValidity: 30 days.',
@@ -164,7 +164,11 @@ export function QuoteBuilder() {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!isEditing) {
+      alert("Please save the quote first.");
+      return;
+    }
+    window.open(`/print/${id}`, '_blank');
   };
 
   return (

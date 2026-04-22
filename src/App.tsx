@@ -5,6 +5,8 @@ import { QuotesList } from './pages/QuotesList';
 import { QuoteBuilder } from './pages/QuoteBuilder';
 import { Clients } from './pages/Clients';
 import { Catalog } from './pages/Catalog';
+import Settings from './pages/Settings';
+import PrintQuote from './pages/PrintQuote';
 
 export default function App() {
   return (
@@ -17,8 +19,9 @@ export default function App() {
           <Route path="/quotes/:id" element={<QuoteBuilder />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/catalog" element={<Catalog />} />
-          <Route path="/settings" element={<div className="p-4">Settings (Coming soon)</div>} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
+        <Route path="/print/:id" element={<PrintQuote />} />
       </Routes>
     </BrowserRouter>
   );

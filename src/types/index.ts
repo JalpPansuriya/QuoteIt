@@ -2,6 +2,24 @@ export type Material = 'UPVC' | 'Aluminium' | 'Wood';
 export type Unit = 'sq ft' | 'unit' | 'running ft';
 export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Invoiced' | 'Rejected';
 
+export interface MetaDataValue {
+  id: string;
+  name: string;
+}
+
+export interface AppSettings {
+  materials: MetaDataValue[];
+  glassTypes: MetaDataValue[];
+  features: {
+    defaultGstEnabled: boolean;
+    defaultGstRate: number;
+    autoGenerateQuoteNumbers: boolean;
+    companyName: string;
+    companyTagline: string;
+    companyLogo?: string;
+  }
+}
+
 export interface Product {
   id: string;
   name: string;

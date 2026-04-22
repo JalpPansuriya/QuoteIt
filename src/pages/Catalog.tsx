@@ -10,20 +10,26 @@ import { v4 as uuidv4 } from 'uuid';
 import { Material, Unit } from '../types';
 
 export function Catalog() {
-  const { products, addProduct, updateProduct, deleteProduct } = useStore();
+  const { products, addProduct, updateProduct, deleteProduct, settings } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({ 
     name: '', 
-    material: 'UPVC' as Material, 
-    glassType: '', 
+    material: (settings.materials[0]?.name || 'UPVC') as Material, 
+    glassType: settings.glassTypes[0]?.name || '', 
     baseRate: 0,
     unit: 'sq ft' as Unit
   });
 
   const resetForm = () => {
-    setFormData({ name: '', material: 'UPVC', glassType: '', baseRate: 0, unit: 'sq ft' });
+    setFormData({ 
+      name: '', 
+      material: (settings.materials[0]?.name || 'UPVC') as Material, 
+      glassType: settings.glassTypes[0]?.name || '', 
+      baseRate: 0, 
+      unit: 'sq ft' 
+    });
     setIsAdding(false);
     setEditingId(null);
   };
@@ -72,11 +78,15 @@ export function Catalog() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
               <Input className="lg:col-span-2" label="Product Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} autoFocus />
               <Select label="Material" value={formData.material} onChange={e => setFormData({ ...formData, material: e.target.value as Material })}>
-                <option value="UPVC">UPVC</option>
-                <option value="Aluminium">Aluminium</option>
-                <option value="Wood">Wood</option>
+                {settings.materials.map(m => (
+                  <option key={m.id} value={m.name}>{m.name}</option>
+                ))}
               </Select>
-              <Input label="Glass Type" value={formData.glassType} onChange={e => setFormData({ ...formData, glassType: e.target.value })} />
+              <Select label="Glass Type" value={formData.glassType} onChange={e => setFormData({ ...formData, glassType: e.target.value })}>
+                {settings.glassTypes.map(g => (
+                  <option key={g.id} value={g.name}>{g.name}</option>
+                ))}
+              </Select>
               <div className="flex gap-2">
                 <Input type="number" label="Base Rate" value={formData.baseRate || ''} onChange={e => setFormData({ ...formData, baseRate: parseFloat(e.target.value) || 0 })} />
                 <Select label="Unit" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>

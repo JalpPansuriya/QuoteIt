@@ -4,13 +4,13 @@ import { useStore } from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Plus, Search, MoreHorizontal, FileText, Trash2, Copy } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, FileText, Trash2, Copy, Edit2 } from 'lucide-react';
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
 export function QuotesList() {
-  const { quotes, clients, deleteQuote, addQuote } = useStore();
+  const { quotes, clients, deleteQuote, addQuote, updateQuote } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
 
@@ -104,17 +104,30 @@ export function QuotesList() {
                       <td className="px-6 py-4 text-slate-500">{format(q.date, 'MMM dd, yyyy')}</td>
                       <td className="px-6 py-4 font-bold text-slate-900">{formatCurrency(q.grandTotal)}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          q.status === 'Approved' || q.status === 'Invoiced' ? 'bg-green-100 text-green-700' :
-                          q.status === 'Sent' ? 'bg-blue-100 text-blue-700' :
-                          q.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-slate-100 text-slate-700'
-                        }`}>
-                          {q.status}
-                        </span>
+                        <select 
+                          value={q.status}
+                          onChange={(e) => updateQuote(q.id, { status: e.target.value as any })}
+                          className={`appearance-none px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all hover:ring-4 focus:ring-4 outline-none border-none ${
+                            q.status === 'Approved' || q.status === 'Invoiced' ? 'bg-green-100 text-green-700 hover:ring-green-500/10 focus:ring-green-500/10' :
+                            q.status === 'Sent' ? 'bg-blue-100 text-blue-700 hover:ring-blue-500/10 focus:ring-blue-500/10' :
+                            q.status === 'Rejected' ? 'bg-red-100 text-red-700 hover:ring-red-500/10 focus:ring-red-500/10' :
+                            'bg-slate-100 text-slate-700 hover:ring-slate-500/10 focus:ring-slate-500/10'
+                          }`}
+                        >
+                          <option value="Draft">Draft</option>
+                          <option value="Sent">Sent</option>
+                          <option value="Approved">Approved</option>
+                          <option value="Invoiced">Invoiced</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
+                          <Link to={`/quotes/${q.id}`}>
+                            <Button variant="ghost" size="sm" title="Edit">
+                              <Edit2 className="h-4 w-4 text-blue-500" />
+                            </Button>
+                          </Link>
                           <Button variant="ghost" size="sm" onClick={() => handleDuplicate(q)} title="Duplicate">
                             <Copy className="h-4 w-4 text-slate-500" />
                           </Button>

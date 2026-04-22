@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { Plus, Trash2, Settings as SettingsIcon, ShieldCheck, Database, Building2 } from 'lucide-react';
+import { Plus, Trash2, Settings as SettingsIcon, ShieldCheck, Database, Building2, Save } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseService } from '../lib/supabaseService';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
@@ -45,51 +45,29 @@ const Settings: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-600 rounded-lg text-white">
-          <SettingsIcon className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-600 rounded-lg text-white">
+            <SettingsIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter text-slate-900">App Settings</h1>
+            <p className="text-slate-500 mt-1">Configure your master data and preferences.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter text-slate-900">App Settings</h1>
-          <p className="text-slate-500 mt-1">Configure your master data and preferences.</p>
-        </div>
+        <Button 
+          variant="primary" 
+          className="gap-2 shadow-lg shadow-blue-500/20" 
+          onClick={handleSync}
+          disabled={syncing}
+        >
+          {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {syncing ? 'Saving...' : 'Save Settings'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Cloud Sync */}
-        <section className="space-y-4 lg:col-span-2">
-          <div className="flex items-center gap-2 mb-2">
-            <Cloud className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">Cloud Data Storage (Supabase)</h2>
-          </div>
-          <Card className="bg-blue-50 border-blue-100">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="max-w-xl">
-                  <p className="font-bold text-slate-900 text-lg">Back up your data to the cloud</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Store your clients, products, and quotes securely in your personal Supabase project. 
-                    Ensure you have set <span className="font-mono text-xs bg-blue-100 px-1 rounded">VITE_SUPABASE_URL</span> and 
-                    <span className="font-mono text-xs bg-blue-100 px-1 rounded ml-1">VITE_SUPABASE_ANON_KEY</span> in the Secrets panel.
-                  </p>
-                </div>
-                <div className="flex flex-col items-center gap-3">
-                  <Button 
-                    variant="primary" 
-                    className="w-full md:w-auto gap-2" 
-                    onClick={handleSync}
-                    disabled={syncing}
-                  >
-                    {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    {syncing ? 'Syncing...' : 'Sync to Cloud'}
-                  </Button>
-                  {syncStatus === 'success' && <p className="text-xs font-bold text-green-600 flex items-center gap-1"><Cloud className="w-3 h-3" /> Sync Successful</p>}
-                  {syncStatus === 'error' && <p className="text-xs font-bold text-red-600 flex items-center gap-1"><CloudOff className="w-3 h-3" /> Check Secrets Panel</p>}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+
 
         {/* Company Meta */}
         <section className="space-y-4">

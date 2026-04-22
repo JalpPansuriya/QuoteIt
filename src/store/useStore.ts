@@ -1,14 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { User } from '@supabase/supabase-js';
 import { Client, Product, Quote, AppSettings, MetaDataValue } from '../types';
+import { supabaseService } from '../lib/supabaseService';
 
 interface AppState {
+  user: User | null;
   clients: Client[];
   products: Product[];
   quotes: Quote[];
   settings: AppSettings;
+  isLoading: boolean;
   
   // Actions
+  setUser: (user: User | null) => void;
+  setAll: (data: Partial<{ clients: Client[], products: Product[], quotes: Quote[], settings: AppSettings }>) => void;
   addClient: (client: Client) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
@@ -28,92 +33,153 @@ interface AppState {
   addGlassType: (glassType: MetaDataValue) => void;
   removeGlassType: (id: string) => void;
   updateFeatures: (features: Partial<AppSettings['features']>) => void;
+
+  // Data Loading
+  loadInitialData: () => Promise<void>;
 }
 
-const defaultProducts: Product[] = [
-  { id: '1', name: 'Premium Sliding Window', material: 'UPVC' as any, glassType: 'Toughened 6mm', baseRate: 350, unit: 'sq ft', createdAt: Date.now() },
-  { id: '2', name: 'Standard Casement Window', material: 'Aluminium' as any, glassType: 'Clear 5mm', baseRate: 280, unit: 'sq ft', createdAt: Date.now() },
-  { id: '3', name: 'Luxury Tilt & Turn', material: 'Wood' as any, glassType: 'Double Glazed', baseRate: 850, unit: 'sq ft', createdAt: Date.now() },
-];
-
-const defaultSettings: AppSettings = {
-  materials: [
-    { id: '1', name: 'UPVC' },
-    { id: '2', name: 'Aluminium' },
-    { id: '3', name: 'Wood' },
-  ],
-  glassTypes: [
-    { id: '1', name: 'Clear 5mm' },
-    { id: '2', name: 'Toughened 6mm' },
-    { id: '3', name: 'Double Glazed' },
-    { id: '4', name: 'Frosted' },
-  ],
+const initialSettings: AppSettings = {
+  materials: [],
+  glassTypes: [],
   features: {
     defaultGstEnabled: true,
     defaultGstRate: 18,
     autoGenerateQuoteNumbers: true,
-    companyName: 'WINDOVATION',
-    companyTagline: 'Premium Window Solutions',
+    companyName: '',
+    companyTagline: '',
   }
 };
 
-const defaultClients: Client[] = [
-  { id: '1', name: 'Acme Corp Properties', phone: '+91 9876543210', email: 'purchase@acmecorp.com', address: '123 Business Park, Sector 4, Mumbai', createdAt: Date.now() },
-];
+export const useStore = create<AppState>((set, get) => ({
+  user: null,
+  clients: [],
+  products: [],
+  quotes: [],
+  settings: initialSettings,
+  isLoading: true,
 
-export const useStore = create<AppState>()(
-  persist(
-    (set) => ({
-      clients: defaultClients,
-      products: defaultProducts,
-      quotes: [],
-      settings: defaultSettings,
+  setUser: (user) => set({ user }),
 
-      addClient: (client) => set((state) => ({ clients: [...state.clients, client] })),
-      updateClient: (id, updated) => set((state) => ({
-        clients: state.clients.map((c) => c.id === id ? { ...c, ...updated } : c)
-      })),
-      deleteClient: (id) => set((state) => ({
-        clients: state.clients.filter((c) => c.id !== id)
-      })),
+  setAll: (data) => set((state) => ({ ...state, ...data })),
 
-      addProduct: (product) => set((state) => ({ products: [...state.products, product] })),
-      updateProduct: (id, updated) => set((state) => ({
-        products: state.products.map((p) => p.id === id ? { ...p, ...updated } : p)
-      })),
-      deleteProduct: (id) => set((state) => ({
-        products: state.products.filter((p) => p.id !== id)
-      })),
+  addClient: (client) => {
+    set((state) => ({ clients: [...state.clients, client] }));
+    autoSave(get());
+  },
+  updateClient: (id, updated) => {
+    set((state) => ({
+      clients: state.clients.map((c) => c.id === id ? { ...c, ...updated } : c)
+    }));
+    autoSave(get());
+  },
+  deleteClient: (id) => {
+    set((state) => ({
+      clients: state.clients.filter((c) => c.id !== id)
+    }));
+    autoSave(get());
+  },
 
-      addQuote: (quote) => set((state) => ({ quotes: [...state.quotes, quote] })),
-      updateQuote: (id, updated) => set((state) => ({
-        quotes: state.quotes.map((q) => q.id === id ? { ...q, ...updated, updatedAt: Date.now() } : q)
-      })),
-      deleteQuote: (id) => set((state) => ({
-        quotes: state.quotes.filter((q) => q.id !== id)
-      })),
+  addProduct: (product) => {
+    set((state) => ({ products: [...state.products, product] }));
+    autoSave(get());
+  },
+  updateProduct: (id, updated) => {
+    set((state) => ({
+      products: state.products.map((p) => p.id === id ? { ...p, ...updated } : p)
+    }));
+    autoSave(get());
+  },
+  deleteProduct: (id) => {
+    set((state) => ({
+      products: state.products.filter((p) => p.id !== id)
+    }));
+    autoSave(get());
+  },
 
-      updateSettings: (settings) => set((state) => ({
-        settings: { ...state.settings, ...settings }
-      })),
-      addMaterial: (material) => set((state) => ({
-        settings: { ...state.settings, materials: [...state.settings.materials, material] }
-      })),
-      removeMaterial: (id) => set((state) => ({
-        settings: { ...state.settings, materials: state.settings.materials.filter((m) => m.id !== id) }
-      })),
-      addGlassType: (glassType) => set((state) => ({
-        settings: { ...state.settings, glassTypes: [...state.settings.glassTypes, glassType] }
-      })),
-      removeGlassType: (id) => set((state) => ({
-        settings: { ...state.settings, glassTypes: state.settings.glassTypes.filter((g) => g.id !== id) }
-      })),
-      updateFeatures: (features) => set((state) => ({
-        settings: { ...state.settings, features: { ...state.settings.features, ...features } }
-      })),
-    }),
-    {
-      name: 'winquote-storage',
+  addQuote: (quote) => {
+    set((state) => ({ quotes: [...state.quotes, quote] }));
+    autoSave(get());
+  },
+  updateQuote: (id, updated) => {
+    set((state) => ({
+      quotes: state.quotes.map((q) => q.id === id ? { ...q, ...updated, updatedAt: Date.now() } : q)
+    }));
+    autoSave(get());
+  },
+  deleteQuote: (id) => {
+    set((state) => ({
+      quotes: state.quotes.filter((q) => q.id !== id)
+    }));
+    autoSave(get());
+  },
+
+  updateSettings: (settings) => {
+    set((state) => ({
+      settings: { ...state.settings, ...settings }
+    }));
+    autoSave(get());
+  },
+  addMaterial: (material) => {
+    set((state) => ({
+      settings: { ...state.settings, materials: [...state.settings.materials, material] }
+    }));
+    autoSave(get());
+  },
+  removeMaterial: (id) => {
+    set((state) => ({
+      settings: { ...state.settings, materials: state.settings.materials.filter((m) => m.id !== id) }
+    }));
+    autoSave(get());
+  },
+  addGlassType: (glassType) => {
+    set((state) => ({
+      settings: { ...state.settings, glassTypes: [...state.settings.glassTypes, glassType] }
+    }));
+    autoSave(get());
+  },
+  removeGlassType: (id) => {
+    set((state) => ({
+      settings: { ...state.settings, glassTypes: state.settings.glassTypes.filter((g) => g.id !== id) }
+    }));
+    autoSave(get());
+  },
+  updateFeatures: (features) => {
+    set((state) => ({
+      settings: { ...state.settings, features: { ...state.settings.features, ...features } }
+    }));
+    autoSave(get());
+  },
+
+  loadInitialData: async () => {
+    set({ isLoading: true });
+    try {
+      const cloudData = await supabaseService.loadAll();
+      if (cloudData) {
+        set({ 
+          clients: cloudData.clients || [],
+          products: cloudData.products || [],
+          quotes: cloudData.quotes || [],
+          settings: cloudData.settings || initialSettings
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load cloud data:', error);
+    } finally {
+      set({ isLoading: false });
     }
-  )
-);
+  }
+}));
+
+// Helper for cloud auto-save
+let saveTimeout: any;
+const autoSave = (state: AppState) => {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    try {
+      const { clients, products, quotes, settings } = state;
+      await supabaseService.saveAll({ clients, products, quotes, settings });
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  }, 1000);
+};

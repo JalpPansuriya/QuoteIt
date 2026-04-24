@@ -162,13 +162,32 @@ export function QuoteBuilder() {
     if (field === 'productId' && value) {
       const product = products.find(p => p.id === value);
       if (product) {
-        newItems[index] = {
-          ...newItems[index],
-          productId: product.id,
-          name: product.name,
-          rate: product.baseRate,
-          unit: product.unit,
-        };
+          newItems[index] = {
+            ...newItems[index],
+            productId: product.id,
+            name: product.name,
+            rate: product.baseRate,
+            unit: product.unit,
+            // Tech Specs
+            series: product.series,
+            glass: product.glass,
+            reinforcement: product.reinforcement,
+            frameJoins: product.frameJoins,
+            flyscreen: product.flyscreen,
+            color: product.color,
+            track: product.track,
+            trackRI: product.trackRI,
+            slidingSash: product.slidingSash,
+            slidingSashRI: product.slidingSashRI,
+            flyscreenSash: product.flyscreenSash,
+            interlock: product.interlock,
+            flyMeshType: product.flyMeshType,
+            guideRail: product.guideRail,
+            handle: product.handle,
+            flyscreenHandle: product.flyscreenHandle,
+            slidingSashRoller: product.slidingSashRoller,
+            flyscreenSashRoller: product.flyscreenSashRoller,
+          };
         if (newItems[index].qty === undefined) {
           newItems[index].qty = 1;
         }
@@ -404,10 +423,41 @@ export function QuoteBuilder() {
       const tableData = (quote.items || []).map((item) => {
         let dimensions = "-";
         if (item.unit === 'sq ft') {
-          dimensions = `${item.width} x ${item.height} Sq Ft`;
+          dimensions = `${item.width} x ${item.height}\nSq Ft`;
         }
+
+        // --- Structured Specs Breakdown ---
+        const specLines = [];
+        
+        // Line 1: Main Framing
+        const l1 = [];
+        if (item.series) l1.push(`Series: ${item.series}`);
+        if (item.color) l1.push(`Color: ${item.color}`);
+        if (item.glass) l1.push(`Glass: ${item.glass}`);
+        if (l1.length > 0) specLines.push(l1.join('  |  '));
+
+        // Line 2: Components
+        const l2 = [];
+        if (item.track) l2.push(`Track: ${item.track}`);
+        if (item.slidingSash) l2.push(`Sash: ${item.slidingSash}`);
+        if (l2.length > 0) specLines.push(l2.join('  |  '));
+
+        // Line 3: Hardware
+        const l3 = [];
+        if (item.handle) l3.push(`Handle: ${item.handle}`);
+        if (item.reinforcement) l3.push(`Steel: ${item.reinforcement}`);
+        if (item.interlock) l3.push(`Interlock: ${item.interlock}`);
+        if (l3.length > 0) specLines.push(l3.join('  |  '));
+
+        // Combine Name + Specs
+        // We use bold for Name and normal for Specs via autoTable's cell styling if possible, 
+        // but here we just return a multi-line string.
+        const description = specLines.length > 0 
+          ? `${item.name.toUpperCase()}\n${specLines.join('\n')}`
+          : item.name;
+
         return [
-          item.name,
+          description,
           dimensions,
           item.qty.toString(),
           safeCurrency(item.rate),
@@ -1028,25 +1078,75 @@ export function QuoteBuilder() {
       {editingItemIndex !== null && quote.items && quote.items[editingItemIndex] && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItemIndex(null)} />
-          <Card className="relative w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
+          <Card className="relative w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-xl">Item Details & Specs</CardTitle>
               <p className="text-sm text-slate-500">Add detailed specifications and an image for {quote.items[editingItemIndex].name || 'this item'}.</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Specifications</label>
-                    <p className="text-[10px] text-slate-500 ml-1">Enter key-value pairs (e.g., "Glass: 5mm Clear") on new lines.</p>
-                    <textarea
-                      className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[200px] bg-slate-50/30 font-mono"
-                      value={quote.items[editingItemIndex].description || ''}
-                      onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
-                      placeholder={`Glass: 5 mm Clear\nColor: White\nHandle: Sliding Touch Lock`}
-                    />
+            <CardContent className="h-[70vh] overflow-y-auto">
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Column: Tech Details */}
+                  <div className="lg:col-span-8 space-y-6">
+                    {/* SECTION: Identity & Framing */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Series & Framing
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Series" value={quote.items[editingItemIndex].series || ''} onChange={e => updateItem(editingItemIndex, 'series', e.target.value)} />
+                        <Input label="Glass Detail" value={quote.items[editingItemIndex].glass || ''} onChange={e => updateItem(editingItemIndex, 'glass', e.target.value)} />
+                        <Input label="Color" value={quote.items[editingItemIndex].color || ''} onChange={e => updateItem(editingItemIndex, 'color', e.target.value)} />
+                        <Input label="Reinforcement" value={quote.items[editingItemIndex].reinforcement || ''} onChange={e => updateItem(editingItemIndex, 'reinforcement', e.target.value)} />
+                        <Input label="Frame Joins" value={quote.items[editingItemIndex].frameJoins || ''} onChange={e => updateItem(editingItemIndex, 'frameJoins', e.target.value)} />
+                        <Input label="Flyscreen Type" value={quote.items[editingItemIndex].flyscreen || ''} onChange={e => updateItem(editingItemIndex, 'flyscreen', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* SECTION: Track & Sash */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Track & Sash Components
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Track Specs" value={quote.items[editingItemIndex].track || ''} onChange={e => updateItem(editingItemIndex, 'track', e.target.value)} />
+                        <Input label="Track RI" value={quote.items[editingItemIndex].trackRI || ''} onChange={e => updateItem(editingItemIndex, 'trackRI', e.target.value)} />
+                        <Input label="Sliding Sash" value={quote.items[editingItemIndex].slidingSash || ''} onChange={e => updateItem(editingItemIndex, 'slidingSash', e.target.value)} />
+                        <Input label="Sliding Sash RI" value={quote.items[editingItemIndex].slidingSashRI || ''} onChange={e => updateItem(editingItemIndex, 'slidingSashRI', e.target.value)} />
+                        <Input label="Flyscreen Sash" value={quote.items[editingItemIndex].flyscreenSash || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenSash', e.target.value)} />
+                        <Input label="Interlock" value={quote.items[editingItemIndex].interlock || ''} onChange={e => updateItem(editingItemIndex, 'interlock', e.target.value)} />
+                        <Input label="Sliding Sash Roller" value={quote.items[editingItemIndex].slidingSashRoller || ''} onChange={e => updateItem(editingItemIndex, 'slidingSashRoller', e.target.value)} />
+                        <Input label="Flyscreen Sash Roller" value={quote.items[editingItemIndex].flyscreenSashRoller || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenSashRoller', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* SECTION: Hardware & Meshes */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Hardware & Meshes
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Fly Mesh Type" value={quote.items[editingItemIndex].flyMeshType || ''} onChange={e => updateItem(editingItemIndex, 'flyMeshType', e.target.value)} />
+                        <Input label="Guide Rail" value={quote.items[editingItemIndex].guideRail || ''} onChange={e => updateItem(editingItemIndex, 'guideRail', e.target.value)} />
+                        <Input label="Handle" value={quote.items[editingItemIndex].handle || ''} onChange={e => updateItem(editingItemIndex, 'handle', e.target.value)} />
+                        <Input label="Flyscreen Handle" value={quote.items[editingItemIndex].flyscreenHandle || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenHandle', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* Additional Notes */}
+                    <div className="space-y-2 pt-4 border-t border-slate-100">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Additional Item Notes</label>
+                      <textarea
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[80px] bg-slate-50/30"
+                        value={quote.items[editingItemIndex].description || ''}
+                        onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
+                        placeholder="Any extra instructions or custom notes for this specific item..."
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
+
+                  {/* Right Column: Image */}
+                  <div className="lg:col-span-4 space-y-4">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Product Image</label>
                     <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] bg-slate-50 relative overflow-hidden">
                       {quote.items[editingItemIndex].image ? (
@@ -1071,6 +1171,7 @@ export function QuoteBuilder() {
                     </div>
                   </div>
                 </div>
+
                 <div className="flex justify-end pt-4 border-t border-slate-100">
                   <Button onClick={() => setEditingItemIndex(null)}>
                     Done

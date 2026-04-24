@@ -28,6 +28,26 @@ export interface Product {
   baseRate: number;
   unit: Unit;
   createdAt: number;
+  
+  // Detailed Specs
+  series?: string;
+  glass?: string;
+  reinforcement?: string;
+  frameJoins?: string;
+  flyscreen?: string;
+  color?: string;
+  track?: string;
+  trackRI?: string;
+  slidingSash?: string;
+  slidingSashRI?: string;
+  flyscreenSash?: string;
+  interlock?: string;
+  flyMeshType?: string;
+  guideRail?: string;
+  handle?: string;
+  flyscreenHandle?: string;
+  slidingSashRoller?: string;
+  flyscreenSashRoller?: string;
 }
 
 export interface Client {
@@ -53,6 +73,26 @@ export interface QuoteLineItem {
   discount: number; // Flat amount or percentage based on quote setting? Let's use amount for line items.
   subtotal: number; // Before line discount
   total: number; // After line discount
+
+  // Detailed Specs (copied from product or custom)
+  series?: string;
+  glass?: string;
+  reinforcement?: string;
+  frameJoins?: string;
+  flyscreen?: string;
+  color?: string;
+  track?: string;
+  trackRI?: string;
+  slidingSash?: string;
+  slidingSashRI?: string;
+  flyscreenSash?: string;
+  interlock?: string;
+  flyMeshType?: string;
+  guideRail?: string;
+  handle?: string;
+  flyscreenHandle?: string;
+  slidingSashRoller?: string;
+  flyscreenSashRoller?: string;
 }
 
 export interface Quote {

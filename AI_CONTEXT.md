@@ -4,8 +4,8 @@
 - **Purpose**: A fast, cloud-native quotation builder and management tool designed for bulk window resellers and manufacturers.
 - **Stack**: React, Tailwind CSS, Zustand, React Router, Supabase.
 - **Status**: Production (Protected Cloud-only)
-- **Version**: 1.4.0
-- **Last Updated**: 2026-04-23
+- **Version**: 1.5.0
+- **Last Updated**: 2026-04-24
 
 ---
 
@@ -44,6 +44,7 @@
 ## Tech Capabilities
 - **Native PDF Engine**: Uses `jsPDF` + `AutoTable` to draw PDFs directly, bypassing all HTML-to-Canvas color/memory limitations.
 - **Quick CRM**: Quick-add modal for clients directly inside the Quote Builder.
+- **Professional Specs**: 18+ technical fields (Series, Track, Sash, Hardware) for precision window fabrication quotes.
 
 ## Next Steps
 - [ ] Add site visit notes / photo attachment.

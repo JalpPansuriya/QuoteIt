@@ -4,6 +4,16 @@ Format: [YYYY-MM-DD] | [vX.X.X] | [Type: Added/Fixed/Changed/Removed]
 
 ---
 
+## [1.5.0] — 2026-04-24
+
+### Added
+- **Professional Specification System**: Expanded the product catalog with 18+ technical window fabrication fields (Series, Track RI, Interlock, etc.).
+- **Grouped Interface**: Organized the Catalog and Quote Builder spec modals into logical sections for high-density data entry.
+- **Deep PDF Integration**: Enhanced the native PDF engine to generate a structured, multi-line technical breakdown for every quote line item.
+- **Auto-Sync Persistence**: Updated cloud storage mapping to ensure granular technical details are saved to the relational backend.
+
+---
+
 ## [1.4.0] — 2026-04-23
 
 ### Added

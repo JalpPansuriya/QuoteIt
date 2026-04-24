@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     materials JSONB DEFAULT '[]'::jsonb,
     glass_types JSONB DEFAULT '[]'::jsonb,
+    presets JSONB DEFAULT '{}'::jsonb,
     features JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -46,7 +47,9 @@ CREATE TABLE IF NOT EXISTS products (
     handle TEXT,
     flyscreen_handle TEXT,
     sliding_sash_roller TEXT,
-    flyscreen_sash_roller TEXT
+    flyscreen_sash_roller TEXT,
+    default_width DECIMAL,
+    default_height DECIMAL
 );
 
 -- 4. Quotes Table (Header)

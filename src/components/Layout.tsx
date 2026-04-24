@@ -1,7 +1,9 @@
+import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Home, FileText, Users, Box, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Auth } from './Auth';
+import { Toaster } from './ui/Toaster';
 
 export function Layout() {
   const location = useLocation();
@@ -15,7 +17,8 @@ export function Layout() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 flex-col md:flex-row font-sans">
+    <div className="flex h-screen bg-slate-50 flex-col md:flex-row font-sans relative">
+      <Toaster />
       <div className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex flex-col">
         <div className="h-20 flex items-center px-6 border-b border-slate-800">
           <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white font-bold text-lg mr-3">Q</div>

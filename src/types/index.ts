@@ -10,6 +10,23 @@ export interface MetaDataValue {
 export interface AppSettings {
   materials: MetaDataValue[];
   glassTypes: MetaDataValue[];
+  series: MetaDataValue[];
+  colors: MetaDataValue[];
+  reinforcements: MetaDataValue[];
+  frameJoins: MetaDataValue[];
+  tracks: MetaDataValue[];
+  trackRIs: MetaDataValue[];
+  slidingSashes: MetaDataValue[];
+  slidingSashRIs: MetaDataValue[];
+  flyscreens: MetaDataValue[];
+  flyscreenSashes: MetaDataValue[];
+  interlocks: MetaDataValue[];
+  flyMeshTypes: MetaDataValue[];
+  guideRails: MetaDataValue[];
+  handles: MetaDataValue[];
+  flyscreenHandles: MetaDataValue[];
+  slidingSashRollers: MetaDataValue[];
+  flyscreenSashRollers: MetaDataValue[];
   features: {
     defaultGstEnabled: boolean;
     defaultGstRate: number;
@@ -17,6 +34,9 @@ export interface AppSettings {
     companyName: string;
     companyTagline: string;
     companyLogo?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+    companyGstin?: string;
   }
 }
 
@@ -48,6 +68,14 @@ export interface Product {
   flyscreenHandle?: string;
   slidingSashRoller?: string;
   flyscreenSashRoller?: string;
+
+  // Visuals
+  displayMode?: 'diagram' | 'image';
+  image?: string;
+
+  // Default Dimensions
+  defaultWidth?: number;
+  defaultHeight?: number;
 }
 
 export interface Client {
@@ -73,6 +101,7 @@ export interface QuoteLineItem {
   discount: number; // Flat amount or percentage based on quote setting? Let's use amount for line items.
   subtotal: number; // Before line discount
   total: number; // After line discount
+  displayMode?: 'diagram' | 'image';
 
   // Detailed Specs (copied from product or custom)
   series?: string;

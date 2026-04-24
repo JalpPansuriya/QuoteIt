@@ -38,6 +38,8 @@ export function Catalog() {
     flyscreenHandle: '',
     slidingSashRoller: '',
     flyscreenSashRoller: '',
+    defaultWidth: undefined as number | undefined,
+    defaultHeight: undefined as number | undefined,
   });
 
   const resetForm = () => {
@@ -65,6 +67,8 @@ export function Catalog() {
       flyscreenHandle: '',
       slidingSashRoller: '',
       flyscreenSashRoller: '',
+      defaultWidth: undefined,
+      defaultHeight: undefined,
     });
     setIsAdding(false);
     setEditingId(null);
@@ -106,6 +110,8 @@ export function Catalog() {
       flyscreenHandle: product.flyscreenHandle || '',
       slidingSashRoller: product.slidingSashRoller || '',
       flyscreenSashRoller: product.flyscreenSashRoller || '',
+      defaultWidth: product.defaultWidth,
+      defaultHeight: product.defaultHeight,
     });
     setEditingId(product.id);
     setIsAdding(true);
@@ -130,6 +136,60 @@ export function Catalog() {
           <CardContent className="p-6">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">{editingId ? 'Edit Product' : 'New Product'}</h3>
             <div className="space-y-8">
+              {/* SECTION: Visuals */}
+              <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col md:flex-row items-center gap-8 mb-4">
+                <div className="w-32 h-32 rounded-3xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all shadow-sm">
+                  {formData.image ? (
+                    <>
+                      <img src={formData.image} alt="Product" className="w-full h-full object-contain p-2" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-white font-bold uppercase">Change</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-2 bg-slate-50 rounded-full shadow-inner text-slate-400 group-hover:text-blue-500 transition-colors">
+                        <Plus className="w-6 h-6" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 mt-2 px-2 text-center leading-tight">Add Product Photo</span>
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData({ ...formData, image: reader.result as string, displayMode: 'image' });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex-1 space-y-4 w-full">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                    <div className="w-4 h-px bg-slate-200" /> Bill Visualization
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Select 
+                      label="Display Mode" 
+                      value={formData.displayMode || 'diagram'} 
+                      onChange={e => setFormData({ ...formData, displayMode: e.target.value as 'diagram' | 'image' })}
+                    >
+                      <option value="diagram">📐 Drawing Diagram (Demo)</option>
+                      <option value="image">🖼️ Product Photo (Actual)</option>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-slate-500 tracking-tight">
+                    Choose <span className="font-bold text-slate-900">"Drawing Diagram"</span> to show the CSS architectural box with dimensions on the final bill for this product.
+                  </p>
+                </div>
+              </div>
+
               {/* SECTION: Identity & Pricing */}
               <div>
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
@@ -142,12 +202,18 @@ export function Catalog() {
                       <option key={m.id} value={m.name}>{m.name}</option>
                     ))}
                   </Select>
-                  <Input type="number" label="Base Rate" value={formData.baseRate || ''} onChange={e => setFormData({ ...formData, baseRate: parseFloat(e.target.value) || 0 })} />
-                  <Select label="Unit" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>
-                    <option value="sq ft">sq ft</option>
-                    <option value="running ft">rft</option>
-                    <option value="unit">unit</option>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Input type="number" label="Base Rate" value={formData.baseRate || ''} onChange={e => setFormData({ ...formData, baseRate: parseFloat(e.target.value) || 0 })} />
+                    <Select label="Unit" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>
+                      <option value="sq ft">sq ft</option>
+                      <option value="running ft">rft</option>
+                      <option value="unit">unit</option>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 lg:col-span-1">
+                    <Input type="number" label="Def. W (ft)" value={formData.defaultWidth ?? ''} onChange={e => setFormData({ ...formData, defaultWidth: e.target.value === '' ? undefined : parseFloat(e.target.value) })} />
+                    <Input type="number" label="Def. H (ft)" value={formData.defaultHeight ?? ''} onChange={e => setFormData({ ...formData, defaultHeight: e.target.value === '' ? undefined : parseFloat(e.target.value) })} />
+                  </div>
                 </div>
               </div>
 
@@ -157,11 +223,26 @@ export function Catalog() {
                   <div className="w-4 h-px bg-slate-200" /> Series & Framing
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Input label="Series" value={formData.series} onChange={e => setFormData({ ...formData, series: e.target.value })} placeholder="e.g. Bella 60mm" />
-                  <Input label="Glass Detail" value={formData.glass} onChange={e => setFormData({ ...formData, glass: e.target.value })} placeholder="e.g. 5mm Clear" />
-                  <Input label="Color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} placeholder="White" />
-                  <Input label="Reinforcement" value={formData.reinforcement} onChange={e => setFormData({ ...formData, reinforcement: e.target.value })} placeholder="Full" />
-                  <Input label="Frame Joins" value={formData.frameJoins} onChange={e => setFormData({ ...formData, frameJoins: e.target.value })} placeholder="Welded" />
+                  <Select label="Series" value={formData.series} onChange={e => setFormData({ ...formData, series: e.target.value })}>
+                    <option value="">Select Series...</option>
+                    {settings.series.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </Select>
+                  <Select label="Glass Detail" value={formData.glass} onChange={e => setFormData({ ...formData, glass: e.target.value })}>
+                    <option value="">Select Glass...</option>
+                    {settings.glassTypes.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                  </Select>
+                  <Select label="Color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })}>
+                    <option value="">Select Color...</option>
+                    {settings.colors.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </Select>
+                  <Select label="Reinforcement" value={formData.reinforcement} onChange={e => setFormData({ ...formData, reinforcement: e.target.value })}>
+                    <option value="">Select Reinforcement...</option>
+                    {settings.reinforcements.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </Select>
+                  <Select label="Frame Joins" value={formData.frameJoins} onChange={e => setFormData({ ...formData, frameJoins: e.target.value })}>
+                    <option value="">Select Frame Join...</option>
+                    {settings.frameJoins.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </Select>
                 </div>
               </div>
 
@@ -171,14 +252,38 @@ export function Catalog() {
                   <div className="w-4 h-px bg-slate-200" /> Track & Sash Components
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Input label="Track Specs" value={formData.track} onChange={e => setFormData({ ...formData, track: e.target.value })} />
-                  <Input label="Track RI" value={formData.trackRI} onChange={e => setFormData({ ...formData, trackRI: e.target.value })} />
-                  <Input label="Sliding Sash" value={formData.slidingSash} onChange={e => setFormData({ ...formData, slidingSash: e.target.value })} />
-                  <Input label="Sliding Sash RI" value={formData.slidingSashRI} onChange={e => setFormData({ ...formData, slidingSashRI: e.target.value })} />
-                  <Input label="Flyscreen Type" value={formData.flyscreen} onChange={e => setFormData({ ...formData, flyscreen: e.target.value })} />
-                  <Input label="Flyscreen Sash" value={formData.flyscreenSash} onChange={e => setFormData({ ...formData, flyscreenSash: e.target.value })} />
-                  <Input label="Sliding Sash Roller" value={formData.slidingSashRoller} onChange={e => setFormData({ ...formData, slidingSashRoller: e.target.value })} />
-                  <Input label="Flyscreen Sash Roller" value={formData.flyscreenSashRoller} onChange={e => setFormData({ ...formData, flyscreenSashRoller: e.target.value })} />
+                  <Select label="Track Specs" value={formData.track} onChange={e => setFormData({ ...formData, track: e.target.value })}>
+                    <option value="">Select Track...</option>
+                    {settings.tracks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </Select>
+                  <Select label="Track RI" value={formData.trackRI} onChange={e => setFormData({ ...formData, trackRI: e.target.value })}>
+                    <option value="">Select Track RI...</option>
+                    {settings.trackRIs.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </Select>
+                  <Select label="Sliding Sash" value={formData.slidingSash} onChange={e => setFormData({ ...formData, slidingSash: e.target.value })}>
+                    <option value="">Select Sash...</option>
+                    {settings.slidingSashes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </Select>
+                  <Select label="Sliding Sash RI" value={formData.slidingSashRI} onChange={e => setFormData({ ...formData, slidingSashRI: e.target.value })}>
+                    <option value="">Select Sash RI...</option>
+                    {settings.slidingSashRIs.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </Select>
+                  <Select label="Flyscreen Type" value={formData.flyscreen} onChange={e => setFormData({ ...formData, flyscreen: e.target.value })}>
+                    <option value="">Select Flyscreen...</option>
+                    {settings.flyscreens.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </Select>
+                  <Select label="Flyscreen Sash" value={formData.flyscreenSash} onChange={e => setFormData({ ...formData, flyscreenSash: e.target.value })}>
+                    <option value="">Select Flyscreen Sash...</option>
+                    {settings.flyscreenSashes.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </Select>
+                  <Select label="Sliding Sash Roller" value={formData.slidingSashRoller} onChange={e => setFormData({ ...formData, slidingSashRoller: e.target.value })}>
+                    <option value="">Select Roller...</option>
+                    {settings.slidingSashRollers.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </Select>
+                  <Select label="Flyscreen Sash Roller" value={formData.flyscreenSashRoller} onChange={e => setFormData({ ...formData, flyscreenSashRoller: e.target.value })}>
+                    <option value="">Select Flyscreen Roller...</option>
+                    {settings.flyscreenSashRollers.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </Select>
                 </div>
               </div>
 
@@ -188,11 +293,26 @@ export function Catalog() {
                   <div className="w-4 h-px bg-slate-200" /> Hardware & Final Details
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Input label="Fly Mesh Type" value={formData.flyMeshType} onChange={e => setFormData({ ...formData, flyMeshType: e.target.value })} />
-                  <Input label="Guide Rail" value={formData.guideRail} onChange={e => setFormData({ ...formData, guideRail: e.target.value })} />
-                  <Input label="Handle" value={formData.handle} onChange={e => setFormData({ ...formData, handle: e.target.value })} />
-                  <Input label="Flyscreen Handle" value={formData.flyscreenHandle} onChange={e => setFormData({ ...formData, flyscreenHandle: e.target.value })} />
-                  <Input label="Interlock" value={formData.interlock} onChange={e => setFormData({ ...formData, interlock: e.target.value })} />
+                  <Select label="Fly Mesh Type" value={formData.flyMeshType} onChange={e => setFormData({ ...formData, flyMeshType: e.target.value })}>
+                    <option value="">Select Mesh...</option>
+                    {settings.flyMeshTypes.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                  </Select>
+                  <Select label="Guide Rail" value={formData.guideRail} onChange={e => setFormData({ ...formData, guideRail: e.target.value })}>
+                    <option value="">Select Guide Rail...</option>
+                    {settings.guideRails.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                  </Select>
+                  <Select label="Handle" value={formData.handle} onChange={e => setFormData({ ...formData, handle: e.target.value })}>
+                    <option value="">Select Handle...</option>
+                    {settings.handles.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+                  </Select>
+                  <Select label="Flyscreen Handle" value={formData.flyscreenHandle} onChange={e => setFormData({ ...formData, flyscreenHandle: e.target.value })}>
+                    <option value="">Select Fly Handle...</option>
+                    {settings.flyscreenHandles.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                  </Select>
+                  <Select label="Interlock" value={formData.interlock} onChange={e => setFormData({ ...formData, interlock: e.target.value })}>
+                    <option value="">Select Interlock...</option>
+                    {settings.interlocks.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                  </Select>
                 </div>
               </div>
             </div>

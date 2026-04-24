@@ -14,6 +14,25 @@ export const supabaseService = {
         id: user.id,
         materials: data.settings.materials,
         glass_types: data.settings.glassTypes,
+        presets: {
+          series: data.settings.series,
+          colors: data.settings.colors,
+          reinforcements: data.settings.reinforcements,
+          frameJoins: data.settings.frameJoins,
+          tracks: data.settings.tracks,
+          trackRIs: data.settings.trackRIs,
+          slidingSashes: data.settings.slidingSashes,
+          slidingSashRIs: data.settings.slidingSashRIs,
+          flyscreens: data.settings.flyscreens,
+          flyscreenSashes: data.settings.flyscreenSashes,
+          interlocks: data.settings.interlocks,
+          flyMeshTypes: data.settings.flyMeshTypes,
+          guideRails: data.settings.guideRails,
+          handles: data.settings.handles,
+          flyscreenHandles: data.settings.flyscreenHandles,
+          slidingSashRollers: data.settings.slidingSashRollers,
+          flyscreenSashRollers: data.settings.flyscreenSashRollers
+        },
         features: data.settings.features
       });
     if (profileError) throw profileError;
@@ -64,7 +83,9 @@ export const supabaseService = {
           handle: p.handle,
           flyscreen_handle: p.flyscreenHandle,
           sliding_sash_roller: p.slidingSashRoller,
-          flyscreen_sash_roller: p.flyscreenSashRoller
+          flyscreen_sash_roller: p.flyscreenSashRoller,
+          default_width: p.defaultWidth,
+          default_height: p.defaultHeight
         })));
       if (productsError) throw productsError;
     }
@@ -160,6 +181,23 @@ export const supabaseService = {
       settings: {
         materials: profile?.materials || [],
         glassTypes: profile?.glass_types || [],
+        series: profile?.presets?.series || [],
+        colors: profile?.presets?.colors || [],
+        reinforcements: profile?.presets?.reinforcements || [],
+        frameJoins: profile?.presets?.frameJoins || [],
+        tracks: profile?.presets?.tracks || [],
+        trackRIs: profile?.presets?.trackRIs || [],
+        slidingSashes: profile?.presets?.slidingSashes || [],
+        slidingSashRIs: profile?.presets?.slidingSashRIs || [],
+        flyscreens: profile?.presets?.flyscreens || [],
+        flyscreenSashes: profile?.presets?.flyscreenSashes || [],
+        interlocks: profile?.presets?.interlocks || [],
+        flyMeshTypes: profile?.presets?.flyMeshTypes || [],
+        guideRails: profile?.presets?.guideRails || [],
+        handles: profile?.presets?.handles || [],
+        flyscreenHandles: profile?.presets?.flyscreenHandles || [],
+        slidingSashRollers: profile?.presets?.slidingSashRollers || [],
+        flyscreenSashRollers: profile?.presets?.flyscreenSashRollers || [],
         features: profile?.features || {}
       },
       clients: clients?.map(c => ({
@@ -195,7 +233,9 @@ export const supabaseService = {
         handle: p.handle,
         flyscreenHandle: p.flyscreen_handle,
         slidingSashRoller: p.sliding_sash_roller,
-        flyscreenSashRoller: p.flyscreen_sash_roller
+        flyscreenSashRoller: p.flyscreen_sash_roller,
+        defaultWidth: p.default_width ? Number(p.default_width) : undefined,
+        defaultHeight: p.default_height ? Number(p.default_height) : undefined
       })) || [],
       quotes: quotesData?.map(q => ({
         id: q.id,
@@ -250,6 +290,24 @@ export const supabaseService = {
         }))
       })) || []
     };
+  },
+
+  deleteQuote: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('quotes').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteClient: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteProduct: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) throw error;
   }
 };
 

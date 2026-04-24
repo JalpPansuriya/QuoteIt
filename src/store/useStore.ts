@@ -10,6 +10,7 @@ interface AppState {
   quotes: Quote[];
   settings: AppSettings;
   isLoading: boolean;
+  notifications: { id: string; message: string; type: 'success' | 'error' | 'info' | 'delete' }[];
   
   // Actions
   setUser: (user: User | null) => void;
@@ -32,15 +33,41 @@ interface AppState {
   removeMaterial: (id: string) => void;
   addGlassType: (glassType: MetaDataValue) => void;
   removeGlassType: (id: string) => void;
+  
+  // Generic Presets
+  addPreset: (key: keyof Omit<AppSettings, 'features'>, value: MetaDataValue) => void;
+  removePreset: (key: keyof Omit<AppSettings, 'features'>, id: string) => void;
+
   updateFeatures: (features: Partial<AppSettings['features']>) => void;
 
   // Data Loading
   loadInitialData: () => Promise<void>;
+
+  // Notification Actions
+  addNotification: (message: string, type?: 'success' | 'error' | 'info' | 'delete') => void;
+  removeNotification: (id: string) => void;
 }
 
 const initialSettings: AppSettings = {
   materials: [],
   glassTypes: [],
+  series: [],
+  colors: [],
+  reinforcements: [],
+  frameJoins: [],
+  tracks: [],
+  trackRIs: [],
+  slidingSashes: [],
+  slidingSashRIs: [],
+  flyscreens: [],
+  flyscreenSashes: [],
+  interlocks: [],
+  flyMeshTypes: [],
+  guideRails: [],
+  handles: [],
+  flyscreenHandles: [],
+  slidingSashRollers: [],
+  flyscreenSashRollers: [],
   features: {
     defaultGstEnabled: true,
     defaultGstRate: 18,
@@ -57,6 +84,7 @@ export const useStore = create<AppState>((set, get) => ({
   quotes: [],
   settings: initialSettings,
   isLoading: true,
+  notifications: [],
 
   setUser: (user) => set({ user }),
 
@@ -76,7 +104,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({
       clients: state.clients.filter((c) => c.id !== id)
     }));
-    autoSave(get());
+    supabaseService.deleteClient(id).catch(console.error);
+    get().addNotification('Client deleted', 'delete');
   },
 
   addProduct: (product) => {
@@ -93,7 +122,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({
       products: state.products.filter((p) => p.id !== id)
     }));
-    autoSave(get());
+    supabaseService.deleteProduct(id).catch(console.error);
+    get().addNotification('Product deleted', 'delete');
   },
 
   addQuote: (quote) => {
@@ -110,7 +140,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({
       quotes: state.quotes.filter((q) => q.id !== id)
     }));
-    autoSave(get());
+    supabaseService.deleteQuote(id).catch(console.error);
+    get().addNotification('Quotation deleted', 'delete');
   },
 
   updateSettings: (settings) => {
@@ -143,6 +174,24 @@ export const useStore = create<AppState>((set, get) => ({
     }));
     autoSave(get());
   },
+  addPreset: (key, value) => {
+    set((state) => ({
+      settings: { 
+        ...state.settings, 
+        [key]: [...((state.settings[key] as MetaDataValue[]) || []), value] 
+      }
+    }));
+    autoSave(get());
+  },
+  removePreset: (key, id) => {
+    set((state) => ({
+      settings: { 
+        ...state.settings, 
+        [key]: ((state.settings[key] as MetaDataValue[]) || []).filter((item) => item.id !== id) 
+      }
+    }));
+    autoSave(get());
+  },
   updateFeatures: (features) => {
     set((state) => ({
       settings: { ...state.settings, features: { ...state.settings.features, ...features } }
@@ -167,8 +216,24 @@ export const useStore = create<AppState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  addNotification: (message, type = 'success') => {
+    const id = uuidv4();
+    set((state) => ({
+      notifications: [...state.notifications, { id, message, type }]
+    }));
+    setTimeout(() => get().removeNotification(id), 3000);
+  },
+  removeNotification: (id) => {
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id)
+    }));
   }
 }));
+
+// Helper for UUIDs (since I'm using uuidv4 above)
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper for cloud auto-save
 let saveTimeout: any;
@@ -178,8 +243,10 @@ const autoSave = (state: AppState) => {
     try {
       const { clients, products, quotes, settings } = state;
       await supabaseService.saveAll({ clients, products, quotes, settings });
+      state.addNotification('Updated', 'success');
     } catch (error) {
       console.error('Auto-save failed:', error);
+      state.addNotification('Update failed', 'error');
     }
   }, 1000);
 };

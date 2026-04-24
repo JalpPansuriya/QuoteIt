@@ -44,6 +44,7 @@ export interface QuoteLineItem {
   productId?: string;
   name: string;
   description?: string;
+  image?: string;
   width?: number;
   height?: number;
   qty: number;

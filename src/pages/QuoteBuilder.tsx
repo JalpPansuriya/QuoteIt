@@ -18,6 +18,7 @@ export function QuoteBuilder() {
   const [libLoaded, setLibLoaded] = useState(false);
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '' });
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
   const isEditing = id && id !== 'new';
   
@@ -40,39 +41,48 @@ export function QuoteBuilder() {
     terms: '50% advance along with P.O. \nBalance against delivery delivery.',
   });
 
+  const [isSaved, setIsSaved] = useState(false);
+  const hasLoadedRef = React.useRef(false);
+
   useEffect(() => {
     if (isLoading) return;
 
     if (isEditing) {
-      const existingQuote = quotes.find(q => q.id === id);
-      if (existingQuote) {
-        setQuote(existingQuote);
-        setIsSaved(false); // Reset lock state for the new quote
-      } else if (quotes.length > 0) {
-        // If we finished loading and still can't find it
-        navigate('/quotes');
+      if (!hasLoadedRef.current) {
+        const existingQuote = quotes.find(q => q.id === id);
+        if (existingQuote) {
+          setQuote(existingQuote);
+          setIsSaved(false); // Reset lock state for the new quote
+          hasLoadedRef.current = true;
+        } else if (quotes.length > 0) {
+          // If we finished loading and still can't find it
+          navigate('/quotes');
+        }
       }
     } else {
-      // Logic for new quote - reset and generate number
-      const lastQuote = quotes.length > 0 ? quotes[quotes.length - 1] : undefined;
-      setQuote({
-        quoteNumber: generateQuoteNumber(lastQuote?.quoteNumber),
-        clientId: '',
-        status: 'Draft',
-        date: Date.now(),
-        validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        items: [],
-        subtotal: 0,
-        discountType: 'percentage',
-        discountValue: 0,
-        discountAmount: 0,
-        applyGst: settings.features.defaultGstEnabled,
-        gstRate: settings.features.defaultGstRate,
-        gstAmount: 0,
-        grandTotal: 0,
-        notes: 'Installation and delivery not included. \nValidity: 30 days.',
-        terms: '50% advance along with P.O. \nBalance against delivery delivery.',
-      });
+      if (!hasLoadedRef.current) {
+        // Logic for new quote - reset and generate number
+        const lastQuote = quotes.length > 0 ? quotes[quotes.length - 1] : undefined;
+        setQuote({
+          quoteNumber: generateQuoteNumber(lastQuote?.quoteNumber),
+          clientId: '',
+          status: 'Draft',
+          date: Date.now(),
+          validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          items: [],
+          subtotal: 0,
+          discountType: 'percentage',
+          discountValue: 0,
+          discountAmount: 0,
+          applyGst: settings.features.defaultGstEnabled,
+          gstRate: settings.features.defaultGstRate,
+          gstAmount: 0,
+          grandTotal: 0,
+          notes: 'Installation and delivery not included. \nValidity: 30 days.',
+          terms: '50% advance along with P.O. \nBalance against delivery delivery.',
+        });
+        hasLoadedRef.current = true;
+      }
     }
   }, [id, quotes, isEditing, isLoading, navigate, settings.features]);
 
@@ -128,6 +138,7 @@ export function QuoteBuilder() {
 
   const updateField = (field: keyof Quote, value: any) => {
     setQuote(prev => ({ ...prev, [field]: value }));
+    setIsSaved(false);
   };
 
   const addItem = () => {
@@ -177,7 +188,7 @@ export function QuoteBuilder() {
     updateField('items', newItems);
   };
 
-  const [isSaved, setIsSaved] = useState(false);
+
 
   const handleSave = () => {
     if (!quote.clientId) {
@@ -233,6 +244,17 @@ export function QuoteBuilder() {
     setQuote(prev => ({ ...prev, clientId }));
     setIsAddingClient(false);
     setNewClient({ name: '', phone: '', email: '', address: '' });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateItem(index, 'image', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   useEffect(() => {
@@ -761,6 +783,17 @@ export function QuoteBuilder() {
                                <option key={p.id} value={p.id}>{p.name}</option>
                              ))}
                            </select>
+                           <div className="px-4 pb-2 print:hidden">
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="h-6 text-[10px] uppercase font-bold tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                               onClick={() => setEditingItemIndex(index)}
+                               disabled={isSaved}
+                             >
+                               {item.description || item.image ? 'Edit Specs/Image' : '+ Add Specs/Image'}
+                             </Button>
+                           </div>
                            <div className="hidden print:block px-4 font-bold text-sm">{item.name}</div>
                         </td>
                         <td className="p-0 border-r border-slate-100 hidden md:table-cell">
@@ -986,6 +1019,64 @@ export function QuoteBuilder() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ITEM DETAILS MODAL */}
+      {editingItemIndex !== null && quote.items && quote.items[editingItemIndex] && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItemIndex(null)} />
+          <Card className="relative w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Item Details & Specs</CardTitle>
+              <p className="text-sm text-slate-500">Add detailed specifications and an image for {quote.items[editingItemIndex].name || 'this item'}.</p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Specifications</label>
+                    <p className="text-[10px] text-slate-500 ml-1">Enter key-value pairs (e.g., "Glass: 5mm Clear") on new lines.</p>
+                    <textarea
+                      className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[200px] bg-slate-50/30 font-mono"
+                      value={quote.items[editingItemIndex].description || ''}
+                      onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
+                      placeholder={`Glass: 5 mm Clear\nColor: White\nHandle: Sliding Touch Lock`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Product Image</label>
+                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] bg-slate-50 relative overflow-hidden">
+                      {quote.items[editingItemIndex].image ? (
+                        <>
+                          <img src={quote.items[editingItemIndex].image} alt="Product" className="object-contain h-full w-full absolute inset-0 p-2" />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button variant="secondary" size="sm" onClick={() => updateItem(editingItemIndex, 'image', undefined)}>Remove Image</Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center">
+                          <Plus className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-slate-500">Upload Image</p>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={(e) => handleImageUpload(e, editingItemIndex)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end pt-4 border-t border-slate-100">
+                  <Button onClick={() => setEditingItemIndex(null)}>
+                    Done
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

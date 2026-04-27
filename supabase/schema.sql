@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     materials JSONB DEFAULT '[]'::jsonb,
     glass_types JSONB DEFAULT '[]'::jsonb,
+    presets JSONB DEFAULT '{}'::jsonb,
     features JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -27,9 +28,28 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT NOT NULL,
     material TEXT,
     glass_type TEXT,
-    base_rate DECIMAL DEFAULT 0,
     unit TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    series TEXT,
+    glass TEXT,
+    reinforcement TEXT,
+    frame_joins TEXT,
+    flyscreen TEXT,
+    color TEXT,
+    track TEXT,
+    track_ri TEXT,
+    sliding_sash TEXT,
+    sliding_sash_ri TEXT,
+    flyscreen_sash TEXT,
+    interlock TEXT,
+    fly_mesh_type TEXT,
+    guide_rail TEXT,
+    handle TEXT,
+    flyscreen_handle TEXT,
+    sliding_sash_roller TEXT,
+    flyscreen_sash_roller TEXT,
+    default_width DECIMAL,
+    default_height DECIMAL
 );
 
 -- 4. Quotes Table (Header)
@@ -69,7 +89,25 @@ CREATE TABLE IF NOT EXISTS quote_items (
     rate DECIMAL DEFAULT 0,
     discount DECIMAL DEFAULT 0,
     subtotal DECIMAL DEFAULT 0,
-    total DECIMAL DEFAULT 0
+    total DECIMAL DEFAULT 0,
+    series TEXT,
+    glass TEXT,
+    reinforcement TEXT,
+    frame_joins TEXT,
+    flyscreen TEXT,
+    color TEXT,
+    track TEXT,
+    track_ri TEXT,
+    sliding_sash TEXT,
+    sliding_sash_ri TEXT,
+    flyscreen_sash TEXT,
+    interlock TEXT,
+    fly_mesh_type TEXT,
+    guide_rail TEXT,
+    handle TEXT,
+    flyscreen_handle TEXT,
+    sliding_sash_roller TEXT,
+    flyscreen_sash_roller TEXT
 );
 
 -- RLS POLICIES

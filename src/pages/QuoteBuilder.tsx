@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Plus, Trash2, Save, Printer, ArrowLeft, Mail, FileText, MessageCircle, Share2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Printer, ArrowLeft, Mail, FileText, MessageCircle, Share2, Loader2, LayoutTemplate } from 'lucide-react';
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Quote, QuoteLineItem, Unit } from '../types';
@@ -164,13 +164,35 @@ export function QuoteBuilder() {
     if (field === 'productId' && value) {
       const product = products.find(p => p.id === value);
       if (product) {
-        newItems[index] = {
-          ...newItems[index],
-          productId: product.id,
-          name: product.name,
-          rate: product.baseRate,
-          unit: product.unit,
-        };
+          newItems[index] = {
+            ...newItems[index],
+            productId: product.id,
+            name: product.name,
+            rate: product.baseRate,
+            unit: product.unit,
+            // Tech Specs
+            series: product.series,
+            glass: product.glass,
+            reinforcement: product.reinforcement,
+            frameJoins: product.frameJoins,
+            flyscreen: product.flyscreen,
+            color: product.color,
+            track: product.track,
+            trackRI: product.trackRI,
+            slidingSash: product.slidingSash,
+            slidingSashRI: product.slidingSashRI,
+            flyscreenSash: product.flyscreenSash,
+            interlock: product.interlock,
+            flyMeshType: product.flyMeshType,
+            guideRail: product.guideRail,
+            handle: product.handle,
+            flyscreenHandle: product.flyscreenHandle,
+            slidingSashRoller: product.slidingSashRoller,
+            flyscreenSashRoller: product.flyscreenSashRoller,
+            // Default size
+            width: product.defaultWidth,
+            height: product.defaultHeight,
+          };
         if (newItems[index].qty === undefined) {
           newItems[index].qty = 1;
         }
@@ -290,261 +312,31 @@ export function QuoteBuilder() {
       alert("Please save the quote first.");
       return;
     }
+    // Open in print mode which auto-triggers window.print()
     window.open(`/print/${id}?mode=print`, '_blank');
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (!isEditing) {
       alert("Please save the quote first.");
       return;
     }
-    
-    if (!libLoaded || !(window as any).jspdf) {
-      alert("PDF native engine is still initializing. Please wait a moment.");
-      return;
+
+    const existing = document.getElementById('pdf-capture-frame');
+    if (existing) {
+      document.body.removeChild(existing);
     }
 
     setIsGeneratingPDF(true);
-
-    try {
-      const { jsPDF } = (window as any).jspdf;
-      const doc = new jsPDF();
-      const client = clients.find(c => c.id === quote.clientId);
-
-      const margin = 15;
-      let yPos = 20;
-
-      // --- HEADER ---
-      // Company Name (Left)
-      doc.setFontSize(26);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(settings.features.companyName || "COMPANY", margin, yPos);
-      
-      // Tagline (Left)
-      yPos += 6;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text((settings.features.companyTagline || "").toUpperCase(), margin, yPos);
-
-      // Quotation Title (Right)
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("QUOTATION", 195, 20, { align: "right" });
-      
-      // Quote Details (Right)
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(`#${quote.quoteNumber}`, 195, 27, { align: "right" });
-      
-      doc.setFontSize(9);
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.setFont("helvetica", "normal");
-      doc.text(new Date(quote.date || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase(), 195, 33, { align: "right" });
-
-      yPos += 15;
-      
-      // Divider
-      doc.setDrawColor(241, 245, 249); // slate-100
-      doc.setLineWidth(0.5);
-      doc.line(margin, yPos, 195, yPos);
-      yPos += 12;
-
-      // Safe currency formatter for native PDF (standard fonts don't support root Rupee symbol)
-      const safeCurrency = (amount: number) => formatCurrency(amount).replace('₹', 'Rs. ');
-
-      // --- CLIENT INFO ---
-      // From
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("FROM", margin, yPos);
-      
-      doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(settings.features.companyName || "", margin, yPos + 6);
-      
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text("Professional Quotation Services", margin, yPos + 11);
-
-      // To
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("CLIENT", 195, yPos, { align: "right" });
-      
-      doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(client?.name || "Valued Customer", 195, yPos + 6, { align: "right" });
-      
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 116, 139); // slate-500
-      
-      let clientInfoY = yPos + 12;
-      if (client?.address) {
-        const addressLines = doc.splitTextToSize(client.address, 80);
-        doc.text(addressLines, 195, clientInfoY, { align: "right" });
-        clientInfoY += (addressLines.length * 4); // add 4mm per line
-      } else {
-        clientInfoY += 4;
-      }
-      
-      if (client?.phone) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(71, 85, 105); // slate-600
-        doc.text(client.phone, 195, clientInfoY + 2, { align: "right" });
-      }
-
-      yPos += 35; // increased margin to prevent overlap
-
-      // --- TABLE ---
-      const tableData = (quote.items || []).map((item) => {
-        let dimensions = "-";
-        if (item.unit === 'sq ft') {
-          dimensions = `${item.width} x ${item.height} Sq Ft`;
-        }
-        return [
-          item.name,
-          dimensions,
-          item.qty.toString(),
-          safeCurrency(item.rate),
-          safeCurrency(item.total)
-        ];
-      });
-
-      (doc as any).autoTable({
-        startY: yPos,
-        head: [['ITEM DESCRIPTION', 'DIMENSIONS', 'QTY', 'RATE', 'TOTAL']],
-        body: tableData,
-        theme: 'plain',
-        headStyles: { 
-          fillColor: [15, 23, 42], 
-          textColor: 255, 
-          fontStyle: 'bold',
-          fontSize: 8,
-          valign: 'middle'
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [15, 23, 42], // slate-900
-          cellPadding: 5
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252] // slate-50
-        },
-        columnStyles: {
-          0: { fontStyle: 'bold' },
-          1: { halign: 'center', textColor: [100, 116, 139] },
-          2: { halign: 'center', fontStyle: 'bold' },
-          3: { halign: 'right', textColor: [100, 116, 139] },
-          4: { halign: 'right', fontStyle: 'bold' }
-        },
-        didDrawCell: (data: any) => {
-           // Draw border bottom for each row
-           if (data.row.section === 'body') {
-             doc.setDrawColor(241, 245, 249);
-             doc.setLineWidth(0.1);
-             doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-           }
-        }
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 15;
-
-      // --- TOTALS BOX ---
-      // We manually draw a nice summary box on the right
-      const boxWidth = 80;
-      const boxX = 195 - boxWidth;
-      
-      // Draw light gray background box
-      doc.setFillColor(248, 250, 252); // slate-50
-      doc.setDrawColor(241, 245, 249); // slate-100
-      doc.setLineWidth(0.5);
-      doc.roundedRect(boxX, yPos, boxWidth, 42, 3, 3, "FD");
-
-      let currentY = yPos + 8;
-      
-      // Subtotal
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 116, 139);
-      doc.text("SUBTOTAL", boxX + 6, currentY);
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42);
-      doc.text(safeCurrency(quote.subtotal || 0), boxX + boxWidth - 6, currentY, { align: "right" });
-      
-      // Discount
-      currentY += 7;
-      doc.setFontSize(8);
-      doc.setTextColor(16, 185, 129); // emerald-500 (green)
-      doc.text(`DISCOUNT (${quote.discountValue}%)`, boxX + 6, currentY);
-      doc.setFontSize(9);
-      doc.text(`-${safeCurrency(quote.discountAmount || 0)}`, boxX + boxWidth - 6, currentY, { align: "right" });
-      
-      // GST
-      currentY += 7;
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text(`GST (${quote.applyGst ? quote.gstRate : 0}%)`, boxX + 6, currentY);
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42);
-      doc.text(safeCurrency(quote.gstAmount || 0), boxX + boxWidth - 6, currentY, { align: "right" });
-
-      // Total Line
-      currentY += 5;
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.line(boxX + 6, currentY, boxX + boxWidth - 6, currentY);
-      
-      // Grand Total
-      currentY += 9;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(71, 85, 105); // slate-600
-      doc.text("TOTAL PAYABLE", boxX + 6, currentY);
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(safeCurrency(quote.grandTotal || 0), boxX + boxWidth - 6, currentY, { align: "right" });
-
-      // --- NOTES ---
-      if (quote.notes) {
-         // Place notes below table but not overlapping the total box
-         const notesY = (doc as any).lastAutoTable.finalY + 15;
-         doc.setFontSize(9);
-         doc.setFont("helvetica", "bold");
-         doc.setTextColor(148, 163, 184); // slate-400
-         doc.text("TERMS & NOTES", margin, notesY);
-         
-         doc.setFontSize(9);
-         doc.setFont("helvetica", "normal");
-         doc.setTextColor(100, 116, 139); // slate-500
-         doc.text(quote.notes, margin, notesY + 5, { maxWidth: boxX - margin - 10 });
-      }
-
-      // --- FOOTER ---
-      const pageHeight = doc.internal.pageSize.height;
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text("Generated by Quoteit", 105, pageHeight - 15, { align: "center" });
-      
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(203, 213, 225); // slate-300
-      doc.text("Powered by BoostifyCorp", 105, pageHeight - 10, { align: "center" });
-
-      // 6. Direct Save
-      doc.save(`${quote.quoteNumber || 'quotation'}.pdf`);
-    } catch (err: any) {
-      console.error("PDF Engine Error:", err);
-      alert(`Final PDF Error: "${err.message || 'Unknown'}"\n\nFallback: Please use standard 'Print' mode.`);
-    } finally {
+    const iframe = document.createElement('iframe');
+    iframe.id = 'pdf-capture-frame';
+    iframe.style.display = 'none';
+    iframe.src = `/print/${id}?auto=download`;
+    document.body.appendChild(iframe);
+    
+    setTimeout(() => {
       setIsGeneratingPDF(false);
-    }
+    }, 5000);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIndex: number, colIndex: number) => {
@@ -1030,49 +822,128 @@ export function QuoteBuilder() {
       {editingItemIndex !== null && quote.items && quote.items[editingItemIndex] && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItemIndex(null)} />
-          <Card className="relative w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
+          <Card className="relative w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-xl">Item Details & Specs</CardTitle>
               <p className="text-sm text-slate-500">Add detailed specifications and an image for {quote.items[editingItemIndex].name || 'this item'}.</p>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Specifications</label>
-                    <p className="text-[10px] text-slate-500 ml-1">Enter key-value pairs (e.g., "Glass: 5mm Clear") on new lines.</p>
-                    <textarea
-                      className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[200px] bg-slate-50/30 font-mono"
-                      value={quote.items[editingItemIndex].description || ''}
-                      onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
-                      placeholder={`Glass: 5 mm Clear\nColor: White\nHandle: Sliding Touch Lock`}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Product Image</label>
-                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] bg-slate-50 relative overflow-hidden">
-                      {quote.items[editingItemIndex].image ? (
-                        <>
-                          <img src={quote.items[editingItemIndex].image} alt="Product" className="object-contain h-full w-full absolute inset-0 p-2" />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Button variant="secondary" size="sm" onClick={() => updateItem(editingItemIndex, 'image', undefined)}>Remove Image</Button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center">
-                          <Plus className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                          <p className="text-sm font-medium text-slate-500">Upload Image</p>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={(e) => handleImageUpload(e, editingItemIndex)}
-                          />
-                        </div>
-                      )}
+            <CardContent className="h-[70vh] overflow-y-auto">
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Column: Tech Details */}
+                  <div className="lg:col-span-8 space-y-6">
+                    {/* SECTION: Identity & Framing */}
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Series & Framing
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Series" value={quote.items[editingItemIndex].series || ''} onChange={e => updateItem(editingItemIndex, 'series', e.target.value)} />
+                        <Input label="Glass Detail" value={quote.items[editingItemIndex].glass || ''} onChange={e => updateItem(editingItemIndex, 'glass', e.target.value)} />
+                        <Input label="Color" value={quote.items[editingItemIndex].color || ''} onChange={e => updateItem(editingItemIndex, 'color', e.target.value)} />
+                        <Input label="Reinforcement" value={quote.items[editingItemIndex].reinforcement || ''} onChange={e => updateItem(editingItemIndex, 'reinforcement', e.target.value)} />
+                        <Input label="Frame Joins" value={quote.items[editingItemIndex].frameJoins || ''} onChange={e => updateItem(editingItemIndex, 'frameJoins', e.target.value)} />
+                        <Input label="Flyscreen Type" value={quote.items[editingItemIndex].flyscreen || ''} onChange={e => updateItem(editingItemIndex, 'flyscreen', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* SECTION: Track & Sash */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Track & Sash Components
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Track Specs" value={quote.items[editingItemIndex].track || ''} onChange={e => updateItem(editingItemIndex, 'track', e.target.value)} />
+                        <Input label="Track RI" value={quote.items[editingItemIndex].trackRI || ''} onChange={e => updateItem(editingItemIndex, 'trackRI', e.target.value)} />
+                        <Input label="Sliding Sash" value={quote.items[editingItemIndex].slidingSash || ''} onChange={e => updateItem(editingItemIndex, 'slidingSash', e.target.value)} />
+                        <Input label="Sliding Sash RI" value={quote.items[editingItemIndex].slidingSashRI || ''} onChange={e => updateItem(editingItemIndex, 'slidingSashRI', e.target.value)} />
+                        <Input label="Flyscreen Sash" value={quote.items[editingItemIndex].flyscreenSash || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenSash', e.target.value)} />
+                        <Input label="Interlock" value={quote.items[editingItemIndex].interlock || ''} onChange={e => updateItem(editingItemIndex, 'interlock', e.target.value)} />
+                        <Input label="Sliding Sash Roller" value={quote.items[editingItemIndex].slidingSashRoller || ''} onChange={e => updateItem(editingItemIndex, 'slidingSashRoller', e.target.value)} />
+                        <Input label="Flyscreen Sash Roller" value={quote.items[editingItemIndex].flyscreenSashRoller || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenSashRoller', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* SECTION: Hardware & Meshes */}
+                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                        Hardware & Meshes
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="Fly Mesh Type" value={quote.items[editingItemIndex].flyMeshType || ''} onChange={e => updateItem(editingItemIndex, 'flyMeshType', e.target.value)} />
+                        <Input label="Guide Rail" value={quote.items[editingItemIndex].guideRail || ''} onChange={e => updateItem(editingItemIndex, 'guideRail', e.target.value)} />
+                        <Input label="Handle" value={quote.items[editingItemIndex].handle || ''} onChange={e => updateItem(editingItemIndex, 'handle', e.target.value)} />
+                        <Input label="Flyscreen Handle" value={quote.items[editingItemIndex].flyscreenHandle || ''} onChange={e => updateItem(editingItemIndex, 'flyscreenHandle', e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* Additional Notes */}
+                    <div className="space-y-2 pt-4 border-t border-slate-100">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Additional Item Notes</label>
+                      <textarea
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[80px] bg-slate-50/30"
+                        value={quote.items[editingItemIndex].description || ''}
+                        onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
+                        placeholder="Any extra instructions or custom notes for this specific item..."
+                      />
                     </div>
                   </div>
+
+                  {/* Right Column: Visuals */}
+                  <div className="lg:col-span-4 space-y-6">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Visualization Mode</label>
+                      <Select 
+                        value={quote.items[editingItemIndex].displayMode || 'diagram'} 
+                        onChange={e => updateItem(editingItemIndex, 'displayMode', e.target.value as 'diagram' | 'image')}
+                        className="mt-2"
+                      >
+                        <option value="diagram">📐 Drawing Diagram (Demo)</option>
+                        <option value="image">🖼️ Product Photo (Actual)</option>
+                      </Select>
+                    </div>
+
+                    {quote.items[editingItemIndex].displayMode === 'image' && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase ml-1">Product Photo</label>
+                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] bg-slate-50 relative overflow-hidden">
+                          {quote.items[editingItemIndex].image ? (
+                            <>
+                              <img src={quote.items[editingItemIndex].image} alt="Product" className="object-contain h-full w-full absolute inset-0 p-2" />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Button variant="secondary" size="sm" onClick={() => updateItem(editingItemIndex, 'image', undefined)}>Remove Photo</Button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center">
+                              <Plus className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                              <p className="text-sm font-medium text-slate-500">Upload Image</p>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                onChange={(e) => handleImageUpload(e, editingItemIndex)}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {quote.items[editingItemIndex].displayMode === 'diagram' && (
+                      <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col items-center justify-center min-h-[200px] text-center space-y-3">
+                         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-blue-600">
+                           <LayoutTemplate className="w-6 h-6" />
+                         </div>
+                         <p className="text-sm font-bold text-blue-900">Diagram View Active</p>
+                         <p className="text-[10px] text-blue-600 font-medium px-4">
+                           This item will show a professional CSS window diagram with width/height labels on the bill.
+                         </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
                 <div className="flex justify-end pt-4 border-t border-slate-100">
                   <Button onClick={() => setEditingItemIndex(null)}>
                     Done

@@ -13,6 +13,23 @@ export interface MetaDataValue {
 export interface AppSettings {
   materials: MetaDataValue[];
   glassTypes: MetaDataValue[];
+  series: MetaDataValue[];
+  colors: MetaDataValue[];
+  reinforcements: MetaDataValue[];
+  frameJoins: MetaDataValue[];
+  tracks: MetaDataValue[];
+  trackRIs: MetaDataValue[];
+  slidingSashes: MetaDataValue[];
+  slidingSashRIs: MetaDataValue[];
+  flyscreens: MetaDataValue[];
+  flyscreenSashes: MetaDataValue[];
+  interlocks: MetaDataValue[];
+  flyMeshTypes: MetaDataValue[];
+  guideRails: MetaDataValue[];
+  handles: MetaDataValue[];
+  flyscreenHandles: MetaDataValue[];
+  slidingSashRollers: MetaDataValue[];
+  flyscreenSashRollers: MetaDataValue[];
   features: {
     defaultGstEnabled: boolean;
     defaultGstRate: number;
@@ -20,6 +37,9 @@ export interface AppSettings {
     companyName: string;
     companyTagline: string;
     companyLogo?: string;
+    companyPhone?: string;
+    companyEmail?: string;
+    companyGstin?: string;
   }
 }
 
@@ -31,6 +51,34 @@ export interface Product {
   baseRate: number;
   unit: Unit;
   createdAt: number;
+  
+  // Detailed Specs
+  series?: string;
+  glass?: string;
+  reinforcement?: string;
+  frameJoins?: string;
+  flyscreen?: string;
+  color?: string;
+  track?: string;
+  trackRI?: string;
+  slidingSash?: string;
+  slidingSashRI?: string;
+  flyscreenSash?: string;
+  interlock?: string;
+  flyMeshType?: string;
+  guideRail?: string;
+  handle?: string;
+  flyscreenHandle?: string;
+  slidingSashRoller?: string;
+  flyscreenSashRoller?: string;
+
+  // Visuals
+  displayMode?: 'diagram' | 'image';
+  image?: string;
+
+  // Default Dimensions
+  defaultWidth?: number;
+  defaultHeight?: number;
 }
 
 export interface Client {
@@ -56,6 +104,27 @@ export interface QuoteLineItem {
   discount: number; // Flat amount or percentage based on quote setting? Let's use amount for line items.
   subtotal: number; // Before line discount
   total: number; // After line discount
+  displayMode?: 'diagram' | 'image';
+
+  // Detailed Specs (copied from product or custom)
+  series?: string;
+  glass?: string;
+  reinforcement?: string;
+  frameJoins?: string;
+  flyscreen?: string;
+  color?: string;
+  track?: string;
+  trackRI?: string;
+  slidingSash?: string;
+  slidingSashRI?: string;
+  flyscreenSash?: string;
+  interlock?: string;
+  flyMeshType?: string;
+  guideRail?: string;
+  handle?: string;
+  flyscreenHandle?: string;
+  slidingSashRoller?: string;
+  flyscreenSashRoller?: string;
 }
 
 export interface Quote {

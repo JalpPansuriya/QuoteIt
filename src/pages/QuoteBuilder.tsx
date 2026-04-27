@@ -37,6 +37,7 @@ export function QuoteBuilder() {
     gstRate: settings.features.defaultGstRate,
     gstAmount: 0,
     grandTotal: 0,
+    version: 1,
     notes: 'Installation and delivery not included. \nValidity: 30 days.',
     terms: '50% advance along with P.O. \nBalance against delivery delivery.',
   });
@@ -78,6 +79,7 @@ export function QuoteBuilder() {
           gstRate: settings.features.defaultGstRate,
           gstAmount: 0,
           grandTotal: 0,
+          version: 1,
           notes: 'Installation and delivery not included. \nValidity: 30 days.',
           terms: '50% advance along with P.O. \nBalance against delivery delivery.',
         });

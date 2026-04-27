@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router';
-import { Home, FileText, Users, Box, Settings } from 'lucide-react';
+import { Home, FileText, Users, Box, Settings, Package, Receipt, CreditCard, BarChart3 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Auth } from './Auth';
 
@@ -9,6 +9,10 @@ export function Layout() {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Quotes', href: '/quotes', icon: FileText },
+    { name: 'Inventory', href: '/inventory', icon: Package },
+    { name: 'Billing', href: '/billing', icon: Receipt },
+    { name: 'Payments', href: '/payments', icon: CreditCard },
+    { name: 'Reports', href: '/reports', icon: BarChart3 },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Catalog', href: '/catalog', icon: Box },
     { name: 'Settings', href: '/settings', icon: Settings },
@@ -21,7 +25,7 @@ export function Layout() {
           <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white font-bold text-lg mr-3">Q</div>
           <h1 className="text-xl font-black tracking-tighter text-white">Quoteit</h1>
         </div>
-        <nav className="p-4 space-y-2 flex-1">
+        <nav className="p-4 space-y-1 flex-1 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href));
             return (
@@ -29,7 +33,7 @@ export function Layout() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  'flex items-center px-4 py-3 rounded text-sm font-medium transition-colors',
+                  'flex items-center px-4 py-2.5 rounded text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-slate-800 text-white shadow-sm'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'

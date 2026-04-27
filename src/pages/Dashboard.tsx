@@ -2,18 +2,22 @@ import { Link } from 'react-router';
 import { useStore } from '../store/useStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FileText, Plus, TrendingUp, Users, Box, Edit2, ExternalLink } from 'lucide-react';
+import { FileText, Plus, TrendingUp, Users, Box, Edit2, ExternalLink, Receipt, CreditCard, AlertTriangle, Package } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
 
 export function Dashboard() {
-  const { quotes, clients, products, updateQuote } = useStore();
+  const { quotes, clients, products, invoices, payments, inventoryItems, updateQuote } = useStore();
 
   const totalRevenue = quotes
     .filter(q => q.status === 'Approved' || q.status === 'Invoiced')
     .reduce((sum, q) => sum + q.grandTotal, 0);
 
   const pendingQuotes = quotes.filter(q => q.status === 'Sent' || q.status === 'Draft').length;
+  const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
+  const outstandingBalance = invoices.reduce((sum, i) => sum + i.balanceDue, 0);
+  const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
+  const lowStockItems = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold).length;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -45,6 +49,51 @@ export function Dashboard() {
           </CardContent>
         </Card>
         
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Invoiced</p>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">{formatCurrency(totalInvoiced)}</h3>
+              </div>
+              <div className="p-3 bg-blue-50 rounded text-blue-600 border border-blue-100">
+                <Receipt className="w-5 h-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Payments Collected</p>
+                <h3 className="text-2xl font-black text-green-700 mt-1">{formatCurrency(totalCollected)}</h3>
+              </div>
+              <div className="p-3 bg-emerald-50 rounded text-emerald-600 border border-emerald-100">
+                <CreditCard className="w-5 h-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Outstanding Balance</p>
+                <h3 className="text-2xl font-black text-red-600 mt-1">{formatCurrency(outstandingBalance)}</h3>
+              </div>
+              <div className="p-3 bg-red-50 rounded text-red-600 border border-red-100">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -86,6 +135,20 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Low Stock Items</p>
+                <h3 className={`text-2xl font-black mt-1 ${lowStockItems > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{lowStockItems}</h3>
+              </div>
+              <div className={`p-3 rounded border ${lowStockItems > 0 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                <Package className="w-5 h-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <h2 className="text-xl font-bold tracking-tight text-slate-900 mt-8 mb-4">Recent Quotes</h2>
@@ -110,7 +173,7 @@ export function Dashboard() {
                   </td>
                 </tr>
               ) : (
-                quotes.sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map((q) => {
+                [...quotes].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map((q) => {
                   const client = clients.find(c => c.id === q.clientId);
                   return (
                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">
@@ -140,12 +203,19 @@ export function Dashboard() {
                         <div className="flex justify-end gap-2">
                           <Link to={`/quotes/${q.id}`}>
                             <Button variant="ghost" size="sm" title="Edit">
-                              <Edit2 className="h-4 h-4 text-blue-500" />
+                              <Edit2 className="h-4 w-4 text-blue-500" />
                             </Button>
                           </Link>
+                          {q.status === 'Approved' && (
+                            <Link to={`/billing/new?quoteId=${q.id}`}>
+                              <Button variant="ghost" size="sm" title="Convert to Invoice">
+                                <Receipt className="h-4 w-4 text-green-600" />
+                              </Button>
+                            </Link>
+                          )}
                           <a href={`/print/${q.id}`} target="_blank" rel="noreferrer">
                             <Button variant="ghost" size="sm" title="View Print">
-                              <ExternalLink className="h-4 h-4 text-slate-500" />
+                              <ExternalLink className="h-4 w-4 text-slate-500" />
                             </Button>
                           </a>
                         </div>

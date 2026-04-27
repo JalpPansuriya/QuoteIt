@@ -28,6 +28,7 @@ export function QuotesList() {
       id: uuidv4(),
       quoteNumber: generateQuoteNumber(lastQuoteNum),
       status: 'Draft' as const,
+      version: 1,
       date: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),

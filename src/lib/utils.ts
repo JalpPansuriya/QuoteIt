@@ -19,3 +19,10 @@ export function generateQuoteNumber(lastNumber: string | undefined): string {
   const nextNum = (numPart + 1).toString().padStart(4, '0');
   return `QT-${nextNum}`;
 }
+
+export function generateInvoiceNumber(lastNumber: string | undefined): string {
+  if (!lastNumber) return 'INV-0001';
+  const numPart = parseInt(lastNumber.replace('INV-', ''), 10);
+  const nextNum = (numPart + 1).toString().padStart(4, '0');
+  return `INV-${nextNum}`;
+}

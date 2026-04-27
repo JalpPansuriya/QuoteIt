@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { User } from '@supabase/supabase-js';
-import { Client, Product, Quote, AppSettings, MetaDataValue } from '../types';
+import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment } from '../types';
 import { supabaseService } from '../lib/supabaseService';
 
 interface AppState {
@@ -8,6 +8,10 @@ interface AppState {
   clients: Client[];
   products: Product[];
   quotes: Quote[];
+  inventoryItems: InventoryItem[];
+  inventoryAdjustments: InventoryAdjustment[];
+  invoices: Invoice[];
+  payments: Payment[];
   settings: AppSettings;
   isLoading: boolean;
   
@@ -25,6 +29,20 @@ interface AppState {
   addQuote: (quote: Quote) => void;
   updateQuote: (id: string, quote: Partial<Quote>) => void;
   deleteQuote: (id: string) => void;
+
+  // Inventory Actions (targeted saves)
+  addInventoryItem: (item: InventoryItem) => void;
+  updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
+  deleteInventoryItem: (id: string) => void;
+  addInventoryAdjustment: (adj: InventoryAdjustment) => void;
+
+  // Invoice Actions (targeted saves)
+  addInvoice: (invoice: Invoice) => void;
+  updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
+  deleteInvoice: (id: string) => void;
+
+  // Payment Actions (targeted saves)
+  addPayment: (payment: Payment) => void;
 
   // Settings Actions
   updateSettings: (settings: Partial<AppSettings>) => void;
@@ -55,6 +73,10 @@ export const useStore = create<AppState>((set, get) => ({
   clients: [],
   products: [],
   quotes: [],
+  inventoryItems: [],
+  inventoryAdjustments: [],
+  invoices: [],
+  payments: [],
   settings: initialSettings,
   isLoading: true,
 
@@ -113,6 +135,98 @@ export const useStore = create<AppState>((set, get) => ({
     autoSave(get());
   },
 
+  // ── Inventory (targeted saves) ──
+
+  addInventoryItem: (item) => {
+    set((state) => ({ inventoryItems: [...state.inventoryItems, item] }));
+    supabaseService.saveInventoryItem(item).catch(console.error);
+  },
+  updateInventoryItem: (id, updated) => {
+    set((state) => ({
+      inventoryItems: state.inventoryItems.map((i) => i.id === id ? { ...i, ...updated, updatedAt: Date.now() } : i)
+    }));
+    const item = get().inventoryItems.find(i => i.id === id);
+    if (item) supabaseService.saveInventoryItem(item).catch(console.error);
+  },
+  deleteInventoryItem: (id) => {
+    set((state) => ({
+      inventoryItems: state.inventoryItems.filter((i) => i.id !== id),
+      inventoryAdjustments: state.inventoryAdjustments.filter((a) => a.inventoryItemId !== id)
+    }));
+    supabaseService.deleteInventoryItem(id).catch(console.error);
+  },
+  addInventoryAdjustment: (adj) => {
+    set((state) => {
+      const items = state.inventoryItems.map(item => {
+        if (item.id === adj.inventoryItemId) {
+          const newQty = adj.adjustmentType === 'in'
+            ? item.quantityOnHand + adj.quantity
+            : item.quantityOnHand - adj.quantity;
+          return { ...item, quantityOnHand: Math.max(0, newQty), updatedAt: Date.now() };
+        }
+        return item;
+      });
+      const updatedItem = items.find(i => i.id === adj.inventoryItemId);
+      supabaseService.saveInventoryAdjustment(adj, updatedItem?.quantityOnHand || 0).catch(console.error);
+      return {
+        inventoryItems: items,
+        inventoryAdjustments: [...state.inventoryAdjustments, adj]
+      };
+    });
+  },
+
+  // ── Invoices (targeted saves) ──
+
+  addInvoice: (invoice) => {
+    set((state) => ({ invoices: [...state.invoices, invoice] }));
+    supabaseService.saveInvoice(invoice).catch(console.error);
+  },
+  updateInvoice: (id, updated) => {
+    set((state) => ({
+      invoices: state.invoices.map((inv) => inv.id === id ? { ...inv, ...updated, updatedAt: Date.now() } : inv)
+    }));
+    const invoice = get().invoices.find(inv => inv.id === id);
+    if (invoice) supabaseService.saveInvoice(invoice).catch(console.error);
+  },
+  deleteInvoice: (id) => {
+    set((state) => ({
+      invoices: state.invoices.filter((inv) => inv.id !== id),
+      payments: state.payments.filter((p) => p.invoiceId !== id)
+    }));
+    supabaseService.deleteInvoice(id).catch(console.error);
+  },
+
+  // ── Payments (targeted saves) ──
+
+  addPayment: (payment) => {
+    set((state) => {
+      // Update the parent invoice
+      const invoices = state.invoices.map(inv => {
+        if (inv.id === payment.invoiceId) {
+          const newAmountPaid = inv.amountPaid + payment.amount;
+          const newBalanceDue = inv.total - newAmountPaid;
+          const newStatus = newBalanceDue <= 0 ? 'Paid' : 'Partially Paid';
+          const updatedInv = {
+            ...inv,
+            amountPaid: newAmountPaid,
+            balanceDue: Math.max(0, newBalanceDue),
+            lastPaymentDate: payment.paymentDate,
+            status: newStatus as any,
+            updatedAt: Date.now()
+          };
+          supabaseService.saveInvoice(updatedInv).catch(console.error);
+          return updatedInv;
+        }
+        return inv;
+      });
+      return {
+        payments: [...state.payments, payment],
+        invoices
+      };
+    });
+    supabaseService.savePayment(payment).catch(console.error);
+  },
+
   updateSettings: (settings) => {
     set((state) => ({
       settings: { ...state.settings, ...settings }
@@ -159,6 +273,10 @@ export const useStore = create<AppState>((set, get) => ({
           clients: cloudData.clients || [],
           products: cloudData.products || [],
           quotes: cloudData.quotes || [],
+          inventoryItems: cloudData.inventoryItems || [],
+          inventoryAdjustments: cloudData.inventoryAdjustments || [],
+          invoices: cloudData.invoices || [],
+          payments: cloudData.payments || [],
           settings: cloudData.settings || initialSettings
         });
       }
@@ -170,7 +288,7 @@ export const useStore = create<AppState>((set, get) => ({
   }
 }));
 
-// Helper for cloud auto-save
+// Helper for cloud auto-save (legacy — quotes/clients/products/settings only)
 let saveTimeout: any;
 const autoSave = (state: AppState) => {
   if (saveTimeout) clearTimeout(saveTimeout);

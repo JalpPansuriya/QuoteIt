@@ -13,6 +13,28 @@ import { useStore } from './store/useStore';
 import { getSupabase } from './lib/supabase';
 import { Loader2 } from 'lucide-react';
 
+// Inventory
+import InventoryList from './pages/inventory/InventoryList';
+import InventoryForm from './pages/inventory/InventoryForm';
+import InventoryDetail from './pages/inventory/InventoryDetail';
+
+// Billing
+import InvoiceList from './pages/billing/InvoiceList';
+import InvoiceBuilder from './pages/billing/InvoiceBuilder';
+import InvoiceDetail from './pages/billing/InvoiceDetail';
+
+// Payments
+import PaymentList from './pages/payments/PaymentList';
+import PaymentForm from './pages/payments/PaymentForm';
+import PaymentDetail from './pages/payments/PaymentDetail';
+
+// Reports
+import ReportHub from './pages/reports/ReportHub';
+import RevenueReport from './pages/reports/RevenueReport';
+import OutstandingReport from './pages/reports/OutstandingReport';
+import QuoteConversionReport from './pages/reports/QuoteConversionReport';
+import InventoryValueReport from './pages/reports/InventoryValueReport';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, setUser, loadInitialData } = useStore();
   const [loading, setLoading] = useState(!user);
@@ -61,6 +83,28 @@ export default function App() {
           <Route path="/clients" element={<Clients />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/settings" element={<Settings />} />
+
+          {/* Inventory */}
+          <Route path="/inventory" element={<InventoryList />} />
+          <Route path="/inventory/new" element={<InventoryForm />} />
+          <Route path="/inventory/:id" element={<InventoryDetail />} />
+
+          {/* Billing */}
+          <Route path="/billing" element={<InvoiceList />} />
+          <Route path="/billing/new" element={<InvoiceBuilder />} />
+          <Route path="/billing/:id" element={<InvoiceDetail />} />
+
+          {/* Payments */}
+          <Route path="/payments" element={<PaymentList />} />
+          <Route path="/payments/new" element={<PaymentForm />} />
+          <Route path="/payments/:id" element={<PaymentDetail />} />
+
+          {/* Reports */}
+          <Route path="/reports" element={<ReportHub />} />
+          <Route path="/reports/revenue" element={<RevenueReport />} />
+          <Route path="/reports/outstanding" element={<OutstandingReport />} />
+          <Route path="/reports/quotes" element={<QuoteConversionReport />} />
+          <Route path="/reports/inventory" element={<InventoryValueReport />} />
         </Route>
 
         <Route path="/print/:id" element={<PrintQuote />} />

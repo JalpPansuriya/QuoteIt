@@ -14,11 +14,12 @@ export default function InvoiceBuilder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-  const { quotes, clients, invoices, addInvoice, updateQuote } = useStore();
+  const { quotes, clients, invoices, projects, addInvoice, updateQuote } = useStore();
   const sourceQuote = quoteId ? quotes.find(q => q.id === quoteId) : null;
   const lastInvNum = invoices.length > 0 ? [...invoices].sort((a, b) => b.createdAt - a.createdAt)[0].invoiceNumber : undefined;
 
   const [clientId, setClientId] = useState(sourceQuote?.clientId || '');
+  const [projectId, setProjectId] = useState(sourceQuote?.projectId || '');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; });
   const [notes, setNotes] = useState('');
@@ -26,7 +27,21 @@ export default function InvoiceBuilder() {
   const [discountAmount, setDiscountAmount] = useState('0');
   const [items, setItems] = useState<InvoiceLineItem[]>(() => {
     if (sourceQuote) {
-      return sourceQuote.items.map(qi => ({ id: uuidv4(), description: qi.name + (qi.description ? ` — ${qi.description}` : ''), productId: qi.productId, quantity: qi.qty, unitPrice: qi.rate, total: qi.total }));
+      // ONLY include items that are marked as 'done' for partial invoicing
+      const doneItems = sourceQuote.items.filter(qi => qi.productionStatus === 'done');
+      
+      // If no items are 'done' yet, but user is converting, we'll allow all items as a fallback 
+      // but warn them (or let them add manually). For this flow, we prioritize 'done' items.
+      const itemsToInvoice = doneItems.length > 0 ? doneItems : sourceQuote.items;
+
+      return itemsToInvoice.map(qi => ({ 
+        id: uuidv4(), 
+        description: `${qi.name}${qi.series ? ` (${qi.series})` : ''} — ${qi.glass || qi.description || 'Custom Window'}`, 
+        productId: qi.productId, 
+        quantity: qi.qty, 
+        unitPrice: qi.rate, 
+        total: qi.total 
+      }));
     }
     return [{ id: uuidv4(), description: '', quantity: 1, unitPrice: 0, total: 0 }];
   });
@@ -50,7 +65,7 @@ export default function InvoiceBuilder() {
 
   const handleSave = () => {
     if (!clientId) return;
-    const invoice: Invoice = { id: uuidv4(), quoteId: sourceQuote?.id, clientId, invoiceNumber: generateInvoiceNumber(lastInvNum), status: 'Draft', issueDate: new Date(issueDate).getTime(), dueDate: new Date(dueDate).getTime(), subtotal, taxAmount, discountAmount: disc, total, amountPaid: 0, balanceDue: total, notes, items, createdAt: Date.now(), updatedAt: Date.now() };
+    const invoice: Invoice = { id: uuidv4(), quoteId: sourceQuote?.id, projectId, clientId, invoiceNumber: generateInvoiceNumber(lastInvNum), status: 'Draft', issueDate: new Date(issueDate).getTime(), dueDate: new Date(dueDate).getTime(), subtotal, taxAmount, discountAmount: disc, total, amountPaid: 0, balanceDue: total, notes, items, createdAt: Date.now(), updatedAt: Date.now() };
     addInvoice(invoice);
     if (sourceQuote) updateQuote(sourceQuote.id, { status: 'Invoiced', convertedToInvoiceId: invoice.id });
     navigate(`/billing/${invoice.id}`);
@@ -70,6 +85,10 @@ export default function InvoiceBuilder() {
           <Select label="Client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
             <option value="">— Select Client —</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+          <Select label="Linked Project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="">No Project</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
           <Input label="Issue Date" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           <Input label="Due Date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />

@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { useStore } from '../../store/useStore';
 import { Card, CardContent } from '../../components/ui/Card';
-import { TrendingUp, AlertCircle, BarChart3, Package } from 'lucide-react';
+import { TrendingUp, AlertCircle, BarChart3, Package, Briefcase } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 
 const reports = [
@@ -9,6 +9,7 @@ const reports = [
   { name: 'Outstanding Balances', desc: 'Unpaid and partially paid invoices', href: '/reports/outstanding', icon: AlertCircle, color: 'bg-red-50 text-red-600 border-red-100' },
   { name: 'Quote Conversion', desc: 'Quotes sent vs approved vs invoiced', href: '/reports/quotes', icon: BarChart3, color: 'bg-blue-50 text-blue-600 border-blue-100' },
   { name: 'Inventory Value', desc: 'Current stock value by cost price', href: '/reports/inventory', icon: Package, color: 'bg-purple-50 text-purple-600 border-purple-100' },
+  { name: 'Project Profitability', desc: 'Site-wise collection and bill progress', href: '/reports/profitability', icon: Briefcase, color: 'bg-indigo-50 text-indigo-600 border-indigo-100' },
 ];
 
 export default function ReportHub() {

@@ -9,14 +9,15 @@ import { Catalog } from './pages/Catalog';
 import Settings from './pages/Settings';
 import PrintQuote from './pages/PrintQuote';
 import { Login } from './pages/Login';
+import ProjectList from './pages/projects/ProjectList';
+import ProjectForm from './pages/projects/ProjectForm';
+import ProjectDetail from './pages/projects/ProjectDetail';
 import { useStore } from './store/useStore';
 import { getSupabase } from './lib/supabase';
 import { Loader2 } from 'lucide-react';
 
-// Inventory
-import InventoryList from './pages/inventory/InventoryList';
-import InventoryForm from './pages/inventory/InventoryForm';
-import InventoryDetail from './pages/inventory/InventoryDetail';
+// Production
+import { ProductionTracker } from './pages/ProductionTracker';
 
 // Billing
 import InvoiceList from './pages/billing/InvoiceList';
@@ -34,9 +35,10 @@ import RevenueReport from './pages/reports/RevenueReport';
 import OutstandingReport from './pages/reports/OutstandingReport';
 import QuoteConversionReport from './pages/reports/QuoteConversionReport';
 import InventoryValueReport from './pages/reports/InventoryValueReport';
+import ProjectProfitabilityReport from './pages/reports/ProjectProfitabilityReport';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, setUser, loadInitialData } = useStore();
+function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: 'admin' | 'site_person' }) {
+  const { user, role, setUser, loadInitialData } = useStore();
   const [loading, setLoading] = useState(!user);
 
   useEffect(() => {
@@ -66,6 +68,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
+  if (requiredRole && role !== requiredRole && role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -80,31 +86,36 @@ export default function App() {
           <Route path="/quotes" element={<QuotesList />} />
           <Route path="/quotes/new" element={<QuoteBuilder />} />
           <Route path="/quotes/:id" element={<QuoteBuilder />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/catalog" element={<Catalog />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/clients" element={<ProtectedRoute requiredRole="admin"><Clients /></ProtectedRoute>} />
+          <Route path="/catalog" element={<ProtectedRoute requiredRole="admin"><Catalog /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>} />
 
-          {/* Inventory */}
-          <Route path="/inventory" element={<InventoryList />} />
-          <Route path="/inventory/new" element={<InventoryForm />} />
-          <Route path="/inventory/:id" element={<InventoryDetail />} />
+          {/* Projects */}
+          <Route path="/projects" element={<ProjectList />} />
+          <Route path="/projects/new" element={<ProtectedRoute requiredRole="admin"><ProjectForm /></ProtectedRoute>} />
+          <Route path="/projects/edit/:id" element={<ProtectedRoute requiredRole="admin"><ProjectForm /></ProtectedRoute>} />
+          <Route path="/projects/:id" element={<ProjectDetail />} />
+
+          {/* Production */}
+          <Route path="/production" element={<ProtectedRoute requiredRole="admin"><ProductionTracker /></ProtectedRoute>} />
 
           {/* Billing */}
-          <Route path="/billing" element={<InvoiceList />} />
-          <Route path="/billing/new" element={<InvoiceBuilder />} />
-          <Route path="/billing/:id" element={<InvoiceDetail />} />
+          <Route path="/billing" element={<ProtectedRoute requiredRole="admin"><InvoiceList /></ProtectedRoute>} />
+          <Route path="/billing/new" element={<ProtectedRoute requiredRole="admin"><InvoiceBuilder /></ProtectedRoute>} />
+          <Route path="/billing/:id" element={<ProtectedRoute requiredRole="admin"><InvoiceDetail /></ProtectedRoute>} />
 
           {/* Payments */}
-          <Route path="/payments" element={<PaymentList />} />
-          <Route path="/payments/new" element={<PaymentForm />} />
-          <Route path="/payments/:id" element={<PaymentDetail />} />
+          <Route path="/payments" element={<ProtectedRoute requiredRole="admin"><PaymentList /></ProtectedRoute>} />
+          <Route path="/payments/new" element={<ProtectedRoute requiredRole="admin"><PaymentForm /></ProtectedRoute>} />
+          <Route path="/payments/:id" element={<ProtectedRoute requiredRole="admin"><PaymentDetail /></ProtectedRoute>} />
 
           {/* Reports */}
-          <Route path="/reports" element={<ReportHub />} />
-          <Route path="/reports/revenue" element={<RevenueReport />} />
-          <Route path="/reports/outstanding" element={<OutstandingReport />} />
-          <Route path="/reports/quotes" element={<QuoteConversionReport />} />
-          <Route path="/reports/inventory" element={<InventoryValueReport />} />
+          <Route path="/reports" element={<ProtectedRoute requiredRole="admin"><ReportHub /></ProtectedRoute>} />
+          <Route path="/reports/revenue" element={<ProtectedRoute requiredRole="admin"><RevenueReport /></ProtectedRoute>} />
+          <Route path="/reports/outstanding" element={<ProtectedRoute requiredRole="admin"><OutstandingReport /></ProtectedRoute>} />
+          <Route path="/reports/quotes" element={<ProtectedRoute requiredRole="admin"><QuoteConversionReport /></ProtectedRoute>} />
+          <Route path="/reports/inventory" element={<ProtectedRoute requiredRole="admin"><InventoryValueReport /></ProtectedRoute>} />
+          <Route path="/reports/profitability" element={<ProtectedRoute requiredRole="admin"><ProjectProfitabilityReport /></ProtectedRoute>} />
         </Route>
 
         <Route path="/print/:id" element={<PrintQuote />} />

@@ -4,6 +4,8 @@ export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Invoiced' | 'Rejected
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Partially Paid' | 'Paid' | 'Overdue';
 export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Card' | 'Cheque' | 'Other';
 export type AdjustmentType = 'in' | 'out';
+export type UserRole = 'admin' | 'site_person';
+export type ProjectStatus = 'Proposal' | 'Active' | 'Completed' | 'On Hold' | 'Rejected';
 
 export interface MetaDataValue {
   id: string;
@@ -51,6 +53,15 @@ export interface QuoteLineItem {
   width?: number;
   height?: number;
   qty: number;
+  sections?: number;
+  series?: string;
+  glass?: string;
+  hardware?: string;
+  rubberColor?: string;
+  tracks?: string;
+  panelCost?: number;
+  colorCoating?: string;
+  productionStatus?: 'pending' | 'manufacturing' | 'done' | 'dispatched' | 'reached';
   unit: Unit;
   rate: number;
   discount: number; // Flat amount or percentage based on quote setting? Let's use amount for line items.
@@ -60,6 +71,7 @@ export interface QuoteLineItem {
 
 export interface Quote {
   id: string;
+  projectId?: string;
   quoteNumber: string;
   clientId: string;
   status: QuoteStatus;
@@ -103,6 +115,7 @@ export interface InventoryItem {
 export interface InventoryAdjustment {
   id: string;
   inventoryItemId: string;
+  projectId?: string;
   adjustmentType: AdjustmentType;
   quantity: number;
   reason: string;
@@ -124,6 +137,7 @@ export interface InvoiceLineItem {
 
 export interface Invoice {
   id: string;
+  projectId?: string;
   quoteId?: string;
   clientId: string;
   invoiceNumber: string;
@@ -148,6 +162,7 @@ export interface Invoice {
 export interface Payment {
   id: string;
   invoiceId: string;
+  projectId?: string;
   clientId: string;
   amount: number;
   paymentMethod: PaymentMethod;
@@ -155,5 +170,31 @@ export interface Payment {
   paymentDate: number;
   notes: string;
   recordedBy: string;
+  createdAt: number;
+}
+
+// ── Projects & Site Tracking ──
+
+export interface Project {
+  id: string;
+  clientId: string;
+  name: string;
+  location?: string;
+  totalUnits: number;
+  unitType: string;
+  status: ProjectStatus;
+  startDate?: number;
+  endDate?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ProjectProgress {
+  id: string;
+  projectId: string;
+  unitsCompleted: number;
+  remarks?: string;
+  recordedBy: string;
+  recordedAt: number;
   createdAt: number;
 }

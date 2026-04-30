@@ -8,6 +8,7 @@ import { Plus, Search, FileText, Trash2, Edit2, Eye } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { format } from 'date-fns';
 import type { InvoiceStatus } from '../../types';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 const STATUS_TABS: { label: string; value: InvoiceStatus | 'All' }[] = [
   { label: 'All', value: 'All' },
@@ -22,6 +23,7 @@ export default function InvoiceList() {
   const { invoices, clients, deleteInvoice } = useStore();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
   const filtered = invoices
     .filter(inv => {
@@ -142,9 +144,7 @@ export default function InvoiceList() {
                               <Eye className="h-4 w-4 text-blue-500" />
                             </Button>
                           </Link>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                            if(window.confirm('Delete this invoice?')) deleteInvoice(inv.id);
-                          }} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
+                          <Button variant="ghost" size="sm" onClick={() => setInvoiceToDelete(inv.id)} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -157,6 +157,17 @@ export default function InvoiceList() {
           </table>
         </div>
       </Card>
+
+      <ConfirmModal
+        isOpen={!!invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={() => {
+          if (invoiceToDelete) deleteInvoice(invoiceToDelete);
+          setInvoiceToDelete(null);
+        }}
+        title="Delete Invoice"
+        message="Are you sure you want to delete this invoice? This will also permanently remove all recorded payments against this invoice."
+      />
     </div>
   );
 }

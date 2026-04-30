@@ -1,22 +1,25 @@
 import { Link, Outlet, useLocation } from 'react-router';
-import { Home, FileText, Users, Box, Settings, Package, Receipt, CreditCard, BarChart3 } from 'lucide-react';
+import { Home, FileText, Users, Box, Settings, Package, Receipt, CreditCard, BarChart3, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Auth } from './Auth';
+import { useStore } from '../store/useStore';
 
 export function Layout() {
   const location = useLocation();
+  const { role } = useStore();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
+    { name: 'Projects', href: '/projects', icon: Briefcase },
     { name: 'Quotes', href: '/quotes', icon: FileText },
-    { name: 'Inventory', href: '/inventory', icon: Package },
-    { name: 'Billing', href: '/billing', icon: Receipt },
-    { name: 'Payments', href: '/payments', icon: CreditCard },
-    { name: 'Reports', href: '/reports', icon: BarChart3 },
-    { name: 'Clients', href: '/clients', icon: Users },
-    { name: 'Catalog', href: '/catalog', icon: Box },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
+    { name: 'Production', href: '/production', icon: Package },
+    { name: 'Billing', href: '/billing', icon: Receipt, adminOnly: true },
+    { name: 'Payments', href: '/payments', icon: CreditCard, adminOnly: true },
+    { name: 'Reports', href: '/reports', icon: BarChart3, adminOnly: true },
+    { name: 'Clients', href: '/clients', icon: Users, adminOnly: true },
+    { name: 'Catalog', href: '/catalog', icon: Box, adminOnly: true },
+    { name: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
+  ].filter(item => !item.adminOnly || role === 'admin');
 
   return (
     <div className="flex h-screen bg-slate-50 flex-col md:flex-row font-sans">

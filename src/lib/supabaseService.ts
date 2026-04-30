@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase';
-import { Client, Product, Quote, AppSettings, InventoryItem, InventoryAdjustment, Invoice, Payment } from '../types';
+import { Client, Product, Quote, AppSettings, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress } from '../types';
 
 export const supabaseService = {
   // ── Legacy bulk save (quotes editor auto-save) ──
@@ -79,6 +79,7 @@ export const supabaseService = {
           expiry_date: quote.expiryDate || null,
           approval_notes: quote.approvalNotes || null,
           converted_to_invoice_id: quote.convertedToInvoiceId || null,
+          project_id: quote.projectId || null,
           created_at: new Date(quote.createdAt).toISOString()
         });
       if (quoteError) throw quoteError;
@@ -100,7 +101,13 @@ export const supabaseService = {
             rate: item.rate,
             discount: item.discount,
             subtotal: item.subtotal,
-            total: item.total
+            total: item.total,
+            sections: item.sections || 2,
+            series: item.series,
+            glass: item.glass,
+            hardware: item.hardware,
+            rubber_color: item.rubberColor,
+            production_status: item.productionStatus || 'pending'
           })));
         if (itemsError) throw itemsError;
       }
@@ -147,6 +154,7 @@ export const supabaseService = {
     const { error: adjError } = await supabase.from('inventory_adjustments').upsert({
       id: adj.id,
       inventory_item_id: adj.inventoryItemId,
+      project_id: adj.projectId || null,
       adjustment_type: adj.adjustmentType,
       quantity: adj.quantity,
       reason: adj.reason,
@@ -186,6 +194,7 @@ export const supabaseService = {
       balance_due: invoice.balanceDue,
       last_payment_date: invoice.lastPaymentDate || null,
       notes: invoice.notes,
+      project_id: invoice.projectId || null,
     });
     if (invError) throw invError;
 
@@ -223,6 +232,7 @@ export const supabaseService = {
       id: payment.id,
       user_id: user.id,
       invoice_id: payment.invoiceId,
+      project_id: payment.projectId || null,
       client_id: payment.clientId,
       amount: payment.amount,
       payment_method: payment.paymentMethod,
@@ -233,6 +243,71 @@ export const supabaseService = {
     });
     if (error) throw error;
     return true;
+  },
+
+  deletePayment: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('payments').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  // ── Projects & Site Tracking ──
+
+  saveProject: async (project: Project) => {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { error } = await supabase.from('projects').upsert({
+      id: project.id,
+      user_id: user.id,
+      client_id: project.clientId,
+      name: project.name,
+      location: project.location,
+      total_units: project.totalUnits,
+      unit_type: project.unitType,
+      status: project.status,
+      start_date: project.startDate,
+      end_date: project.endDate,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    return true;
+  },
+
+  deleteProject: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  saveProjectProgress: async (progress: ProjectProgress) => {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { error } = await supabase.from('project_progress').upsert({
+      id: progress.id,
+      project_id: progress.projectId,
+      units_completed: progress.unitsCompleted,
+      remarks: progress.remarks,
+      recorded_by: user.id,
+      recorded_at: new Date(progress.recordedAt).toISOString()
+    });
+    if (error) throw error;
+    return true;
+  },
+
+  deleteProjectProgress: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('project_progress').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteInventoryAdjustment: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('inventory_adjustments').delete().eq('id', id);
+    if (error) throw error;
   },
 
   // ── Load all data ──
@@ -262,12 +337,16 @@ export const supabaseService = {
     // Load Payments
     const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
 
+    // Load Projects
+    const { data: projectsData } = await supabase.from('projects').select('*, project_progress(*)').eq('user_id', user.id);
+
     return {
       settings: {
         materials: profile?.materials || [],
         glassTypes: profile?.glass_types || [],
         features: profile?.features || {}
       },
+      role: profile?.role || 'admin',
       clients: clients?.map(c => ({
         id: c.id,
         name: c.name,
@@ -307,6 +386,7 @@ export const supabaseService = {
         expiryDate: q.expiry_date || undefined,
         approvalNotes: q.approval_notes || undefined,
         convertedToInvoiceId: q.converted_to_invoice_id || undefined,
+        projectId: q.project_id || undefined,
         createdAt: new Date(q.created_at).getTime(),
         updatedAt: q.updated_at ? new Date(q.updated_at).getTime() : new Date(q.created_at).getTime(),
         items: q.quote_items.map((item: any) => ({
@@ -321,7 +401,13 @@ export const supabaseService = {
           rate: Number(item.rate),
           discount: Number(item.discount),
           subtotal: Number(item.subtotal),
-          total: Number(item.total)
+          total: Number(item.total),
+          sections: Number(item.sections || 2),
+          series: item.series,
+          glass: item.glass,
+          hardware: item.hardware,
+          rubberColor: item.rubber_color,
+          productionStatus: item.production_status || 'pending'
         }))
       })) || [],
       inventoryItems: inventoryData?.map(i => ({
@@ -338,6 +424,7 @@ export const supabaseService = {
         adjustments: i.inventory_adjustments?.map((a: any) => ({
           id: a.id,
           inventoryItemId: a.inventory_item_id,
+          projectId: a.project_id || undefined,
           adjustmentType: a.adjustment_type,
           quantity: Number(a.quantity),
           reason: a.reason || '',
@@ -349,6 +436,7 @@ export const supabaseService = {
         (i.inventory_adjustments || []).map((a: any) => ({
           id: a.id,
           inventoryItemId: a.inventory_item_id,
+          projectId: a.project_id || undefined,
           adjustmentType: a.adjustment_type,
           quantity: Number(a.quantity),
           reason: a.reason || '',
@@ -371,6 +459,7 @@ export const supabaseService = {
         amountPaid: Number(inv.amount_paid),
         balanceDue: Number(inv.balance_due),
         lastPaymentDate: inv.last_payment_date || undefined,
+        projectId: inv.project_id || undefined,
         notes: inv.notes || '',
         items: (inv.invoice_line_items || []).map((item: any) => ({
           id: item.id,
@@ -387,6 +476,7 @@ export const supabaseService = {
       payments: paymentsData?.map(p => ({
         id: p.id,
         invoiceId: p.invoice_id,
+        projectId: p.project_id || undefined,
         clientId: p.client_id,
         amount: Number(p.amount),
         paymentMethod: p.payment_method,
@@ -396,6 +486,30 @@ export const supabaseService = {
         recordedBy: p.recorded_by,
         createdAt: new Date(p.created_at).getTime(),
       })) || [],
+      projects: projectsData?.map(p => ({
+        id: p.id,
+        clientId: p.client_id,
+        name: p.name,
+        location: p.location || '',
+        totalUnits: p.total_units,
+        unitType: p.unit_type,
+        status: p.status,
+        startDate: p.start_date || undefined,
+        endDate: p.end_date || undefined,
+        createdAt: new Date(p.created_at).getTime(),
+        updatedAt: new Date(p.updated_at).getTime(),
+      })) || [],
+      projectProgress: projectsData?.flatMap(p => 
+        (p.project_progress || []).map((a: any) => ({
+          id: a.id,
+          projectId: a.project_id,
+          unitsCompleted: a.units_completed,
+          remarks: a.remarks || '',
+          recordedBy: a.recorded_by,
+          recordedAt: new Date(a.recorded_at).getTime(),
+          createdAt: new Date(a.created_at).getTime(),
+        }))
+      ) || [],
     };
   }
 };

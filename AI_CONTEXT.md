@@ -3,11 +3,12 @@
 ## Overview
 - **Purpose**: A fast, cloud-native quotation builder and management tool designed for bulk window resellers and manufacturers.
 - **Stack**: React, Tailwind CSS, Zustand, React Router, Supabase.
-- **Status**: Production (Protected Cloud-only)
-- **Version**: 1.4.0
-- **Last Updated**: 2026-04-23
+- **Status**: RBAC & Advanced Reporting Complete
+- **Version**: 2.5.0
+- **Last Updated**: 2026-04-28
 
 ---
+
 
 ## File Structure
 ```

@@ -5,12 +5,14 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Plus, Trash2, Edit2, Phone, Mail, MapPin } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 export function Clients() {
   const { clients, addClient, updateClient, deleteClient } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormData({ name: '', phone: '', email: '', address: '' });
@@ -77,9 +79,7 @@ export function Clients() {
                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(client)}>
                      <Edit2 className="w-4 h-4 text-slate-400" />
                    </Button>
-                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
-                     if(window.confirm('Delete this client?')) deleteClient(client.id);
-                   }}>
+                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setClientToDelete(client.id)}>
                      <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500 hover:bg-red-50" />
                    </Button>
                 </div>
@@ -114,6 +114,17 @@ export function Clients() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={() => {
+          if (clientToDelete) deleteClient(clientToDelete);
+          setClientToDelete(null);
+        }}
+        title="Delete Client"
+        message="Are you sure you want to delete this client? This will remove all their contact information. Please note that associated quotes and invoices will remain but will be orphaned."
+      />
     </div>
   );
 }

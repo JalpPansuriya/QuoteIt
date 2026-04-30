@@ -5,6 +5,7 @@ import { formatCurrency } from '../lib/utils';
 import { format, isValid } from 'date-fns';
 import { getSupabase } from '../lib/supabase';
 import { Printer } from 'lucide-react';
+import { WindowSchematic } from '../components/WindowSchematic';
 
 const PrintQuote: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,19 +14,22 @@ const PrintQuote: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      console.log("Checking print session...");
+      console.log("Checking print session for ID:", id);
       const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
         setUser(session.user);
-        console.log("Session found, loading data...");
+        console.log("Session found, ensuring data is loaded...");
         await loadInitialData();
+        setInitChecked(true);
+      } else {
+        console.log("No session found, redirecting to login...");
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       }
-      setInitChecked(true);
     };
     init();
-  }, [setUser, loadInitialData]);
+  }, [id, setUser, loadInitialData]);
 
   // Find data
   const quote = id && quotes.length > 0 ? quotes.find(q => q.id === id) : null;
@@ -93,156 +97,228 @@ const PrintQuote: React.FC = () => {
       <div className="fixed bottom-8 right-8 print:hidden z-50">
         <button 
           onClick={() => window.print()}
-          className="flex items-center gap-2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-2xl hover:bg-gray-700 transition-all font-bold"
+          className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl hover:bg-black transition-all font-bold"
         >
           <Printer className="w-5 h-5" />
           Print Document
         </button>
       </div>
 
-      <div className="w-[210mm] min-h-[297mm] bg-white text-black font-serif text-[12px] p-6 shadow-md print:shadow-none print:w-full print:p-0">
+      <div className="w-[210mm] min-h-[297mm] bg-white text-slate-900 font-sans text-[12px] p-10 shadow-md print:shadow-none print:w-full print:p-0">
         
         {/* Header */}
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start mb-4 border-b border-gray-200 pb-4">
           <div className="w-1/3">
-            <h1 className="font-bold text-[14px] uppercase" contentEditable suppressContentEditableWarning>{settings.features.companyName}</h1>
-            <div className="text-[11px] leading-snug mt-1 text-gray-700 outline-none" contentEditable suppressContentEditableWarning>
-              <p>Professional Quotation Services</p>
-              <p>Contact No. - +91 XXXXXXXXXX</p>
-              <p>Email - example@email.com</p>
-              <p>GSTIN - XXXXXXXXXXXXXXX</p>
-            </div>
-          </div>
-          <div className="w-1/3 text-center">
-            <h2 className="text-[20px] font-bold mt-2 uppercase" contentEditable suppressContentEditableWarning>Quotation</h2>
-          </div>
-          <div className="w-1/3 flex justify-end">
             {settings.features.companyLogo ? (
-               <img src={settings.features.companyLogo} alt="Logo" className="max-h-16" />
+              <img src={settings.features.companyLogo} alt="Logo" className="max-h-16 object-contain" />
             ) : (
-               <div className="w-24 h-16 bg-gray-200 flex items-center justify-center text-gray-500 text-xs italic border border-gray-300">
-                 Logo Placeholder
-               </div>
+              <h1 className="font-black text-[20px] uppercase tracking-tighter">
+                {settings.features.companyName || 'PRINCE WINDOWS'}
+              </h1>
             )}
           </div>
-        </div>
-
-        {/* Recipient Row */}
-        <div className="w-full border border-gray-500 mb-4 flex">
-          <div className="w-1/2 border-r border-gray-500 flex flex-col">
-            <div className="bg-gray-500 text-white font-bold px-2 py-1 text-[11px]">To</div>
-            <div className="p-2 min-h-[60px] text-[11px] leading-snug outline-none" contentEditable suppressContentEditableWarning>
-              <p className="font-bold">{client?.name}</p>
-              <p>{client?.address}</p>
-              {client?.phone && <p>{client.phone}</p>}
-              {client?.email && <p>{client.email}</p>}
-            </div>
+          
+          <div className="w-1/3 text-center">
+            <h2 className="text-[32px] font-bold text-gray-800 tracking-tight">Quotation</h2>
           </div>
-          <div className="w-1/2 flex flex-col">
-            <div className="bg-gray-500 text-white font-bold px-2 py-1 text-[11px]">Deliver To</div>
-            <div className="p-2 min-h-[60px] text-[11px] leading-snug outline-none" contentEditable suppressContentEditableWarning>
-              <p className="font-bold">{client?.name}</p>
-              <p>{client?.address}</p>
-              {client?.phone && <p>{client.phone}</p>}
+
+          <div className="w-1/3 flex justify-end">
+            <div className="text-right">
+               {settings.features.companyLogo && (
+                 <h1 className="font-bold text-[14px] text-gray-800 mb-1">{settings.features.companyName}</h1>
+               )}
+               <p className="text-[10px] text-gray-500 italic uppercase tracking-wider">{settings.features.companyTagline}</p>
             </div>
           </div>
         </div>
 
-        {/* Meta Row */}
-        <div className="w-full border border-gray-500 mb-4">
-          <table className="w-full text-center text-[11px]">
-            <thead>
-              <tr className="bg-gray-500 text-white font-bold">
-                <th className="py-1 border-r border-white/20 font-normal">Quote No.</th>
-                <th className="py-1 border-r border-white/20 font-normal">Date</th>
-                <th className="py-1 border-r border-white/20 font-normal">Sales Person</th>
-                <th className="py-1 font-normal">Responsible</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="py-1 border-r border-gray-500 font-bold" contentEditable suppressContentEditableWarning>{quote.quoteNumber}</td>
-                <td className="py-1 border-r border-gray-500 font-bold" contentEditable suppressContentEditableWarning>{safeFormatDate(quote.date)}</td>
-                <td className="py-1 border-r border-gray-500 font-bold uppercase" contentEditable suppressContentEditableWarning>{user?.email?.split('@')[0] || 'ADMIN'}</td>
-                <td className="py-1 font-bold" contentEditable suppressContentEditableWarning>N/A</td>
-              </tr>
-            </tbody>
-          </table>
+        {/* Project Info & Date */}
+        <div className="flex justify-between items-start mb-6 text-[11px]">
+          <div className="space-y-1">
+            <div className="flex gap-2">
+              <span className="w-24 text-gray-500">Project no.</span>
+              <span className="font-bold">: {quote.quoteNumber?.replace(/\D/g, '') || '2479'}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="w-24 text-gray-500">Project name</span>
+              <span className="font-bold">: {client?.name?.toUpperCase() || 'JIGARBHAI'}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="w-24 text-gray-500">Client name</span>
+              <span className="font-bold">: {client?.name?.toUpperCase() || 'JIGARBHAI'}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-gray-500">Date:</span> <span className="font-bold">{safeFormatDate(quote.date)}</span>
+          </div>
         </div>
 
         {/* Line Items Table */}
-        <div className="w-full border border-gray-500 mb-4">
-          <table className="w-full text-[11px] border-collapse">
+        <div className="w-full mb-6 border-t border-l border-gray-400">
+          <table className="w-full text-[10px] border-collapse">
             <thead>
-              <tr className="bg-gray-500 text-white text-left font-normal">
-                <th className="py-1 px-2 border-r border-white/20 border-b border-gray-500 w-[20%]">Sales Line</th>
-                <th className="py-1 px-2 border-r border-white/20 border-b border-gray-500 w-[45%]">Details</th>
-                <th className="py-1 px-2 border-r border-white/20 border-b border-gray-500 w-[8%] text-center">Qty</th>
-                <th className="py-1 px-2 border-r border-white/20 border-b border-gray-500 w-[12%] text-right">Rate (Rs.)</th>
-                <th className="py-1 px-2 border-b border-gray-500 w-[15%] text-right">Amount (Rs.)</th>
+              <tr className="bg-white text-center font-bold">
+                <th className="py-2 border-r border-b border-gray-400 w-[35%]">Type</th>
+                <th className="py-2 border-r border-b border-gray-400 w-[10%]">Width</th>
+                <th className="py-2 border-r border-b border-gray-400 w-[10%]">Height</th>
+                <th className="py-2 border-r border-b border-gray-400 w-[10%]">ft²</th>
+                <th className="py-2 border-r border-b border-gray-400 w-[15%]">Unit price Rs.</th>
+                <th className="py-2 border-r border-b border-gray-400 w-[5%]">Qt.</th>
+                <th className="py-2 border-b border-gray-400 w-[15%]">Subtotal Rs.</th>
               </tr>
             </thead>
             <tbody>
-              {quote.items.map((item, idx) => (
-                <tr key={item.id} className={`border-b border-gray-500 last:border-b-0 align-top ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                  <td className="py-2 px-2 border-r border-gray-500">
-                    <div className="text-center font-bold mb-1">{idx + 1} - {item.productId ? 'W0' + (idx+1) : 'ITM' + (idx+1)}</div>
-                    {(item.width || item.height) && (
-                      <div className="text-center mb-2 text-[10px]">Size: {item.width} x {item.height} {item.unit}</div>
-                    )}
-                    {item.image ? (
-                      <img src={item.image} alt="diagram" className="w-full max-w-[120px] mx-auto border border-gray-300 p-1 mt-2 object-contain" />
-                    ) : (
-                       <div className="w-full h-24 mt-2 border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-[9px] print:hidden">
-                         [No Image]
-                       </div>
-                    )}
-                  </td>
-                  <td className="py-2 px-2 border-r border-gray-500">
-                    <div className="font-bold mb-1">{item.name}</div>
-                    {renderSpecs(item.description)}
-                  </td>
-                  <td className="py-2 px-2 border-r border-gray-500 text-center font-bold">{item.qty || 0}</td>
-                  <td className="py-2 px-2 border-r border-gray-500 text-right">{item.rate?.toFixed(2) || '0.00'}</td>
-                  <td className="py-2 px-2 text-right font-bold">{item.total?.toFixed(2) || '0.00'}</td>
-                </tr>
-              ))}
+              {quote.items.map((item, idx) => {
+                const area = (Number(item.width || 0) * Number(item.height || 0));
+                return (
+                  <React.Fragment key={item.id}>
+                    {/* Dimension Row */}
+                    <tr className="text-center font-bold">
+                      <td rowSpan={2} className="p-4 border-r border-b border-gray-400 align-middle relative">
+                        <div className="absolute top-1 left-1 text-[9px] font-bold text-gray-400">{idx + 1}</div>
+                        <div className="absolute top-1 right-1 text-[9px] font-bold text-gray-400">{idx + 1}</div>
+                        <div className="flex justify-center items-center py-4">
+                          <WindowSchematic 
+                            width={item.width || 3} 
+                            height={item.height || 2} 
+                            sections={item.sections || 2}
+                            className="scale-[0.85]"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2 border-r border-b border-gray-400 bg-gray-50">{item.width || '-'}</td>
+                      <td className="py-2 border-r border-b border-gray-400 bg-gray-50">{item.height || '-'}</td>
+                      <td className="py-2 border-r border-b border-gray-400 bg-gray-50">{area > 0 ? area.toFixed(2) : '-'}</td>
+                      <td className="py-2 border-r border-b border-gray-400 bg-gray-50">{item.rate?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2 border-r border-b border-gray-400 bg-gray-50">{item.qty || 1}</td>
+                      <td className="py-2 border-b border-gray-400 bg-gray-50">{item.total?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    {/* Specifications Row */}
+                    <tr>
+                      <td colSpan={6} className="p-4 border-b border-gray-400 text-left align-top space-y-2">
+                        <div className="font-bold text-[11px] uppercase text-gray-800">{item.series || item.name || 'Gaudani - 32MM SLIDING SERIES'}</div>
+                        
+                        <div className="flex text-[10px] gap-2">
+                          <span className="w-20 text-gray-500">Description:</span>
+                          <span className="font-medium text-gray-800">{item.description || '2T/2P Sliding'}</span>
+                        </div>
+                        
+                        {item.tracks && (
+                          <div className="flex text-[10px] gap-2">
+                            <span className="w-20 text-gray-500">Tracks:</span>
+                            <span className="font-medium text-gray-800">{item.tracks}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex text-[10px] gap-2">
+                          <span className="w-20 text-gray-500">Glass:</span>
+                          <span className="font-medium text-gray-800">{item.glass || '11.52mm ST-187 Clear Reflective Laminated'}</span>
+                        </div>
+
+                        {item.colorCoating && (
+                          <div className="flex text-[10px] gap-2">
+                            <span className="w-20 text-gray-500">Coating:</span>
+                            <span className="font-medium text-gray-800">{item.colorCoating}</span>
+                          </div>
+                        )}
+
+                        {item.panelCost ? (
+                          <div className="flex text-[10px] gap-2">
+                            <span className="w-20 text-gray-500">Panel Cost:</span>
+                            <span className="font-medium text-gray-800">{item.panelCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })} Rs.</span>
+                          </div>
+                        ) : null}
+
+                        {/* Rubber Color Block */}
+                        <div className="border border-gray-400 p-1 flex items-center justify-between w-full max-w-[400px]">
+                          <span className="px-2 text-[9px] font-bold text-gray-600">Rubber and brush: {item.rubberColor || 'Black'}</span>
+                          <div 
+                            className="w-16 h-4 border border-gray-400" 
+                            style={{ backgroundColor: item.rubberColor?.toLowerCase() || 'black' }}
+                          />
+                        </div>
+
+                        <div className="font-bold text-[10px] text-gray-800 uppercase tracking-tight">
+                          {item.hardware || 'MULTI POINT LOCKING'}
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Totals Section */}
-        <div className="flex justify-end w-full mb-8">
-          <div className="w-[30%] flex flex-col text-[11px] border border-gray-500">
-             <div className="flex justify-between px-2 py-1 border-b border-gray-500">
-                <span className="font-bold">Subtotal</span>
-                <span>{quote.subtotal?.toFixed(2) || '0.00'}</span>
+        {/* Totals & Summary */}
+        <div className="flex justify-end mb-8">
+          <div className="w-[45%] space-y-1 text-[11px]">
+             <div className="flex justify-between font-bold border-b border-gray-200 pb-1">
+                <span className="text-gray-500">Total area:</span>
+                <span>{quote.items.reduce((acc, item) => acc + ((item.width || 0) * (item.height || 0) * (item.qty || 1)), 0).toFixed(2)} ft²</span>
              </div>
-             {(quote.discountAmount || 0) > 0 && (
-                <div className="flex justify-between px-2 py-1 border-b border-gray-500">
-                  <span className="font-bold">Discount</span>
-                  <span>-{quote.discountAmount?.toFixed(2)}</span>
-                </div>
-             )}
+             <div className="flex justify-between font-bold border-b border-gray-200 pb-1">
+                <span className="text-gray-500">Subtotal</span>
+                <span>{quote.subtotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })} Rs.</span>
+             </div>
              {quote.applyGst && (
-                <div className="flex justify-between px-2 py-1 border-b border-gray-500">
-                  <span className="font-bold">GST ({quote.gstRate}%)</span>
-                  <span>{quote.gstAmount?.toFixed(2)}</span>
+                <div className="flex justify-between font-bold border-b border-gray-200 pb-1">
+                  <span className="text-gray-500">GST {quote.gstRate}%</span>
+                  <span>{quote.gstAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })} Rs.</span>
                 </div>
              )}
-             <div className="flex justify-between px-2 py-1 bg-gray-500 text-white">
-                <span className="font-bold">Grand Total</span>
-                <span className="font-bold">{quote.grandTotal?.toFixed(2) || '0.00'}</span>
+             <div className="flex justify-between font-black text-[14px] pt-1">
+                <span>Total</span>
+                <span>{quote.grandTotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 })} Rs.</span>
              </div>
           </div>
         </div>
 
-        {quote.notes && (
-          <div className="mt-4 text-[11px]">
-             <div className="font-bold uppercase mb-1">Notes / Terms:</div>
-             <div className="font-normal whitespace-pre-wrap outline-none" contentEditable suppressContentEditableWarning>{quote.notes}</div>
-          </div>
-        )}
+        {/* T&C Page Break Logic - Professional Approach */}
+        <div className="print:break-before-page mt-20 p-8 border border-gray-300 rounded-sm">
+           <h3 className="text-center font-bold text-[18px] text-red-600 mb-8 uppercase tracking-widest">Terms and Conditions</h3>
+           <ul className="list-disc pl-10 space-y-4 text-[11px] font-medium leading-relaxed text-gray-800">
+             <li><strong>100% Advance Payment</strong> to be made while placing the order.</li>
+             <li>Any replacement or removal of windows will be charged Extra.</li>
+             <li>Pre & Post inspection of the site will be done by both client and us.</li>
+             <li>Quotation has to be checked and verified by the client.</li>
+             <li>Once the quotation is finalized and order placed, no changes are permitted.</li>
+             <li>Rates will be re-calculated if there is a variation in height or width more than 150mm after site inspection.</li>
+             <li>Glass: There is no warranty for fragile material and protection for it will be done by client.</li>
+             <li>There is no warranty for glass once installation is done.</li>
+             <li>For manufacturing defect, client has to inform us within 48 hours after installation. After the time period, {settings.features.companyName} will be not liable for any defects.</li>
+             <li>Scaffolding/Crane Service, electricity, storage for material and cleaning of glass & window will be under customer's scope.</li>
+             <li>Any Damage or Breackage of Sill/Stone/Glass White will not be our responsibility.</li>
+             <li>Transportation Charges will be additional(Extra) and comes under client's scope.</li>
+             <li>Delivery time :- 40 - 60 days</li>
+             <li>Quotation Validity :- 15 days</li>
+             <li className="text-red-600 font-bold uppercase">**Above Mentioned Rates Does Not Include Mosquito Mesh**</li>
+           </ul>
+
+           <div className="mt-16 flex border border-gray-400 text-[11px] font-bold">
+              <div className="w-1/2 border-r border-gray-400 flex flex-col min-h-[100px]">
+                <div className="p-2 border-b border-gray-400">AGREED TO AND ACCEPTED BY:</div>
+                <div className="flex-1" />
+                <div className="p-2 border-t border-gray-400">SIGN:</div>
+              </div>
+              <div className="w-1/2 flex flex-col min-h-[100px]">
+                <div className="p-2 border-b border-gray-400">AGREED TO AND ACCEPTED BY:</div>
+                <div className="p-2 uppercase">{settings.features.companyName}</div>
+                <div className="flex-1" />
+                <div className="p-2 border-t border-gray-400">SIGN:</div>
+              </div>
+           </div>
+        </div>
+
+        {/* Print Page Footer */}
+        <div className="mt-12 pt-4 border-t border-gray-200 flex justify-between items-center text-[10px] text-gray-400 font-bold italic">
+           <span>{new Date().toLocaleString()}</span>
+           <span>Page 1 of 2</span>
+           <div className="flex items-center gap-2">
+             <span>Powered by</span>
+             <span className="text-gray-600 not-italic">Boostify Corp</span>
+           </div>
+        </div>
         
       </div>
     </div>

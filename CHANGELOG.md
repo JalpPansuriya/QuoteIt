@@ -4,6 +4,71 @@ Format: [YYYY-MM-DD] | [vX.X.X] | [Type: Added/Fixed/Changed/Removed]
 
 ---
 
+## [Unreleased]
+
+---
+
+## [2.5.0] - 2026-04-28
+
+### Added
+- **Multi-Section Window Diagrams**: Added support for 2, 3, and 4-panel window configurations.
+- **Dynamic Schematic Logic**: Diagrams now automatically adjust panel widths, shading, and sliding arrows based on the number of sections selected.
+- **Section Selector**: Integrated a new "Window Sections" dropdown in the Quote Builder specifications modal.
+
+---
+
+## [2.4.3] - 2026-04-28
+
+### Added
+- **High-Fidelity Window Schematics**: Implemented professional SVG diagrams with panel shading, sliding direction arrows, and technical dimension markers.
+- **Improved Area Labeling**: Added bold, large-scale area labels to the technical preview for better readability.
+
+---
+
+## [2.4.1] - 2026-04-28
+
+### Changed
+- **Version**: 2.5.0
+- **Restored Quotation Design**: Reverted the print layout to the professional dark-themed legacy design with bold headers, centered titles, and formal signature sections.
+- **Improved PDF Aesthetics**: Enhanced typography and spacing for better readability on printed documents.
+
+---
+
+## [2.4.0] - 2026-04-28
+
+### Added
+- **Role-Based Access Control (RBAC)**: Enforced `admin` vs. `site_person` roles across the app.
+- **Project Profitability Report**: New site-wise financial health dashboard tracking collection vs. target.
+- **Personalized Dashboard**: Tailored dashboard views for different roles (Admin focus on Revenue, Site Person on Progress).
+
+### Changed
+- **Secured Site Operations**: Restricted project creation, deletion, and financial management to Admin users only.
+- **Enhanced Navigation**: Sidebar dynamically adjusts based on user permissions.
+
+### Fixed
+- **Project Financial Totals**: Fixed a bug in `ProjectDetail` where total payments were not being calculated correctly.
+
+---
+
+## [2.3.0] - 2026-04-28
+
+### Added
+- **Company Branding System**: Logo upload, Name, and Tagline configuration in Settings.
+- **Branded Exports**: Integrated company logo and identity into PDF invoices and Printed quotations.
+- **Granular Deletion**: Added deletion support for Project Progress logs and Inventory Adjustments.
+
+### Changed
+- **Standardized Deletion UX**: Replaced all native `confirm()` dialogs with high-fidelity `ConfirmModal` across Projects, Quotes, Clients, Invoices, Inventory, and Settings.
+- **PDF Professionalism**: Enhanced PDF footer and header layouts for better brand presentation.
+
+### Fixed
+- **State Integrity**: Corrected inventory quantity reversal when deleting adjustment records.
+
+### Added
+- Comprehensive Project Analysis (v2.0.0 status check)
+
+---
+
 ## [1.4.0] — 2026-04-23
 
 ### Added

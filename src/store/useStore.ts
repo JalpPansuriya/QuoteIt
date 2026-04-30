@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { User } from '@supabase/supabase-js';
-import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment } from '../types';
+import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress, UserRole } from '../types';
 import { supabaseService } from '../lib/supabaseService';
 
 interface AppState {
@@ -12,7 +12,10 @@ interface AppState {
   inventoryAdjustments: InventoryAdjustment[];
   invoices: Invoice[];
   payments: Payment[];
+  projects: Project[];
+  projectProgress: ProjectProgress[];
   settings: AppSettings;
+  role: UserRole | null;
   isLoading: boolean;
   
   // Actions
@@ -35,14 +38,22 @@ interface AppState {
   updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
   deleteInventoryItem: (id: string) => void;
   addInventoryAdjustment: (adj: InventoryAdjustment) => void;
+  deleteInventoryAdjustment: (id: string) => void;
 
   // Invoice Actions (targeted saves)
   addInvoice: (invoice: Invoice) => void;
   updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
   deleteInvoice: (id: string) => void;
 
-  // Payment Actions (targeted saves)
   addPayment: (payment: Payment) => void;
+  deletePayment: (id: string) => void;
+
+  // Project Actions
+  addProject: (project: Project) => void;
+  updateProject: (id: string, project: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  addProjectProgress: (progress: ProjectProgress) => void;
+  deleteProjectProgress: (id: string) => void;
 
   // Settings Actions
   updateSettings: (settings: Partial<AppSettings>) => void;
@@ -77,7 +88,10 @@ export const useStore = create<AppState>((set, get) => ({
   inventoryAdjustments: [],
   invoices: [],
   payments: [],
+  projects: [],
+  projectProgress: [],
   settings: initialSettings,
+  role: null,
   isLoading: true,
 
   setUser: (user) => set({ user }),
@@ -174,6 +188,29 @@ export const useStore = create<AppState>((set, get) => ({
       };
     });
   },
+  deleteInventoryAdjustment: (id) => {
+    set((state) => {
+      const adj = state.inventoryAdjustments.find(a => a.id === id);
+      if (!adj) return state;
+      const items = state.inventoryItems.map(item => {
+        if (item.id === adj.inventoryItemId) {
+          // Reverse the adjustment
+          const newQty = adj.adjustmentType === 'in'
+            ? item.quantityOnHand - adj.quantity
+            : item.quantityOnHand + adj.quantity;
+          return { ...item, quantityOnHand: Math.max(0, newQty), updatedAt: Date.now() };
+        }
+        return item;
+      });
+      const updatedItem = items.find(i => i.id === adj.inventoryItemId);
+      if (updatedItem) supabaseService.saveInventoryItem(updatedItem).catch(console.error);
+      supabaseService.deleteInventoryAdjustment(id).catch(console.error);
+      return {
+        inventoryItems: items,
+        inventoryAdjustments: state.inventoryAdjustments.filter(a => a.id !== id)
+      };
+    });
+  },
 
   // ── Invoices (targeted saves) ──
 
@@ -189,10 +226,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (invoice) supabaseService.saveInvoice(invoice).catch(console.error);
   },
   deleteInvoice: (id) => {
-    set((state) => ({
-      invoices: state.invoices.filter((inv) => inv.id !== id),
-      payments: state.payments.filter((p) => p.invoiceId !== id)
-    }));
+    set((state) => {
+      const paymentsToDelete = state.payments.filter((p) => p.invoiceId === id);
+      paymentsToDelete.forEach(p => supabaseService.deletePayment(p.id).catch(console.error));
+      
+      return {
+        invoices: state.invoices.filter((inv) => inv.id !== id),
+        payments: state.payments.filter((p) => p.invoiceId !== id)
+      };
+    });
     supabaseService.deleteInvoice(id).catch(console.error);
   },
 
@@ -200,6 +242,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   addPayment: (payment) => {
     set((state) => {
+      const invoice = state.invoices.find(inv => inv.id === payment.invoiceId);
+      const enhancedPayment = {
+        ...payment,
+        projectId: invoice?.projectId || payment.projectId
+      };
+
       // Update the parent invoice
       const invoices = state.invoices.map(inv => {
         if (inv.id === payment.invoiceId) {
@@ -219,12 +267,75 @@ export const useStore = create<AppState>((set, get) => ({
         }
         return inv;
       });
+
+      supabaseService.savePayment(enhancedPayment).catch(console.error);
+
       return {
-        payments: [...state.payments, payment],
+        payments: [...state.payments, enhancedPayment],
         invoices
       };
     });
-    supabaseService.savePayment(payment).catch(console.error);
+  },
+
+  deletePayment: (id) => {
+    set((state) => {
+      const payment = state.payments.find(p => p.id === id);
+      if (!payment) return state;
+
+      const invoices = state.invoices.map(inv => {
+        if (inv.id === payment.invoiceId) {
+          const newAmountPaid = Math.max(0, inv.amountPaid - payment.amount);
+          const newBalanceDue = inv.total - newAmountPaid;
+          const newStatus = newBalanceDue <= 0 ? 'Paid' : (newAmountPaid > 0 ? 'Partially Paid' : 'Sent');
+          const updatedInv = {
+            ...inv,
+            amountPaid: newAmountPaid,
+            balanceDue: newBalanceDue,
+            status: newStatus as any,
+            updatedAt: Date.now()
+          };
+          supabaseService.saveInvoice(updatedInv).catch(console.error);
+          return updatedInv;
+        }
+        return inv;
+      });
+
+      supabaseService.deletePayment(id).catch(console.error);
+
+      return {
+        payments: state.payments.filter(p => p.id !== id),
+        invoices
+      };
+    });
+  },
+
+  // ── Projects & Site Tracking ──
+
+  addProject: (project) => {
+    set((state) => ({ projects: [...state.projects, project] }));
+    supabaseService.saveProject(project).catch(console.error);
+  },
+  updateProject: (id, updated) => {
+    set((state) => ({
+      projects: state.projects.map((p) => p.id === id ? { ...p, ...updated, updatedAt: Date.now() } : p)
+    }));
+    const project = get().projects.find(p => p.id === id);
+    if (project) supabaseService.saveProject(project).catch(console.error);
+  },
+  deleteProject: (id) => {
+    set((state) => ({
+      projects: state.projects.filter((p) => p.id !== id),
+      projectProgress: state.projectProgress.filter((a) => a.projectId !== id)
+    }));
+    supabaseService.deleteProject(id).catch(console.error);
+  },
+  addProjectProgress: (progress) => {
+    set((state) => ({ projectProgress: [...state.projectProgress, progress] }));
+    supabaseService.saveProjectProgress(progress).catch(console.error);
+  },
+  deleteProjectProgress: (id) => {
+    set((state) => ({ projectProgress: state.projectProgress.filter(p => p.id !== id) }));
+    supabaseService.deleteProjectProgress(id).catch(console.error);
   },
 
   updateSettings: (settings) => {
@@ -277,7 +388,10 @@ export const useStore = create<AppState>((set, get) => ({
           inventoryAdjustments: cloudData.inventoryAdjustments || [],
           invoices: cloudData.invoices || [],
           payments: cloudData.payments || [],
-          settings: cloudData.settings || initialSettings
+          projects: cloudData.projects || [],
+          projectProgress: cloudData.projectProgress || [],
+          settings: cloudData.settings || initialSettings,
+          role: (cloudData.role as UserRole) || 'admin'
         });
       }
     } catch (error) {

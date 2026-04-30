@@ -4,15 +4,17 @@ import { useStore } from '../store/useStore';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Plus, Search, MoreHorizontal, FileText, Trash2, Copy, Edit2 } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, FileText, Trash2, Copy, Edit2, ExternalLink } from 'lucide-react';
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 export function QuotesList() {
   const { quotes, clients, deleteQuote, addQuote, updateQuote } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
 
   const filteredQuotes = quotes.filter(q => {
     const clientName = clients.find(c => c.id === q.clientId)?.name.toLowerCase() || '';
@@ -129,12 +131,15 @@ export function QuotesList() {
                               <Edit2 className="h-4 w-4 text-blue-500" />
                             </Button>
                           </Link>
+                          <Link to={`/print/${q.id}`} target="_blank">
+                            <Button variant="ghost" size="sm" title="View Print">
+                              <ExternalLink className="h-4 w-4 text-slate-500" />
+                            </Button>
+                          </Link>
                           <Button variant="ghost" size="sm" onClick={() => handleDuplicate(q)} title="Duplicate">
                             <Copy className="h-4 w-4 text-slate-500" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                            if(window.confirm('Delete this quote?')) deleteQuote(q.id);
-                          }} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
+                          <Button variant="ghost" size="sm" onClick={() => setQuoteToDelete(q.id)} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -147,6 +152,17 @@ export function QuotesList() {
           </table>
         </div>
       </Card>
+
+      <ConfirmModal
+        isOpen={!!quoteToDelete}
+        onClose={() => setQuoteToDelete(null)}
+        onConfirm={() => {
+          if (quoteToDelete) deleteQuote(quoteToDelete);
+          setQuoteToDelete(null);
+        }}
+        title="Delete Quotation"
+        message="Are you sure you want to delete this quotation? This action cannot be undone and will remove all revision history for this quote."
+      />
     </div>
   );
 }

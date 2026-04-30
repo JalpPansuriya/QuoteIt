@@ -6,7 +6,8 @@ import { Input } from '../components/ui/Input';
 import { Plus, Trash2, Settings as SettingsIcon, ShieldCheck, Database, Building2, Save } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseService } from '../lib/supabaseService';
-import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, ConfirmModal } from 'lucide-react';
+import { ConfirmModal as AppConfirmModal } from '../components/ui/ConfirmModal';
 
 const Settings: React.FC = () => {
   const { settings, addMaterial, removeMaterial, addGlassType, removeGlassType, updateFeatures, clients, products, quotes } = useStore();
@@ -14,6 +15,8 @@ const Settings: React.FC = () => {
   const [newGlassType, setNewGlassType] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
+  const [glassToDelete, setGlassToDelete] = useState<string | null>(null);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -77,16 +80,36 @@ const Settings: React.FC = () => {
           </div>
           <Card>
             <CardContent className="p-6 space-y-4">
-              <Input 
-                label="Company Name" 
-                value={settings.features.companyName} 
-                onChange={e => updateFeatures({ companyName: e.target.value })} 
-              />
-              <Input 
-                label="Tagline / Motto" 
-                value={settings.features.companyTagline} 
-                onChange={e => updateFeatures({ companyTagline: e.target.value })} 
-              />
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="w-full md:w-32 h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group">
+                  {settings.features.companyLogo ? (
+                    <img src={settings.features.companyLogo} alt="Logo" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <>
+                      <Building2 className="w-8 h-8 text-slate-300" />
+                      <span className="text-[10px] font-bold text-slate-400 mt-2">NO LOGO</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex-1 space-y-4 w-full">
+                  <Input 
+                    label="Company Name" 
+                    value={settings.features.companyName} 
+                    onChange={e => updateFeatures({ companyName: e.target.value })} 
+                  />
+                  <Input 
+                    label="Tagline / Motto" 
+                    value={settings.features.companyTagline} 
+                    onChange={e => updateFeatures({ companyTagline: e.target.value })} 
+                  />
+                  <Input 
+                    label="Logo URL" 
+                    placeholder="https://example.com/logo.png"
+                    value={settings.features.companyLogo || ''} 
+                    onChange={e => updateFeatures({ companyLogo: e.target.value })} 
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -160,7 +183,7 @@ const Settings: React.FC = () => {
                   <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
                     <span className="font-medium text-slate-800">{m.name}</span>
                     <button 
-                      onClick={() => removeMaterial(m.id)}
+                      onClick={() => setMaterialToDelete(m.id)}
                       className="p-1 text-slate-300 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -197,7 +220,7 @@ const Settings: React.FC = () => {
                   <div key={g.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg group hover:bg-slate-100 transition-colors">
                     <span className="font-medium text-slate-800">{g.name}</span>
                     <button 
-                      onClick={() => removeGlassType(g.id)}
+                      onClick={() => setGlassToDelete(g.id)}
                       className="p-1 text-slate-300 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -209,6 +232,28 @@ const Settings: React.FC = () => {
           </Card>
         </section>
       </div>
+
+      <AppConfirmModal
+        isOpen={!!materialToDelete}
+        onClose={() => setMaterialToDelete(null)}
+        onConfirm={() => {
+          if (materialToDelete) removeMaterial(materialToDelete);
+          setMaterialToDelete(null);
+        }}
+        title="Remove Material"
+        message="Are you sure you want to remove this material? This will not affect existing records but will remove it from the catalog options."
+      />
+
+      <AppConfirmModal
+        isOpen={!!glassToDelete}
+        onClose={() => setGlassToDelete(null)}
+        onConfirm={() => {
+          if (glassToDelete) removeGlassType(glassToDelete);
+          setGlassToDelete(null);
+        }}
+        title="Remove Glass Type"
+        message="Are you sure you want to remove this glass type? This will not affect existing records but will remove it from the catalog options."
+      />
     </div>
   );
 };

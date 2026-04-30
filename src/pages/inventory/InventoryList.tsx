@@ -6,10 +6,12 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Package, Plus, Search, AlertTriangle, Edit2, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 export default function InventoryList() {
   const { inventoryItems, deleteInventoryItem } = useStore();
   const [search, setSearch] = useState('');
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const filtered = inventoryItems
     .filter(i =>
@@ -112,9 +114,7 @@ export default function InventoryList() {
                               <Edit2 className="h-4 w-4 text-blue-500" />
                             </Button>
                           </Link>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                            if(window.confirm('Delete this inventory item?')) deleteInventoryItem(item.id);
-                          }} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
+                          <Button variant="ghost" size="sm" onClick={() => setItemToDelete(item.id)} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -127,6 +127,17 @@ export default function InventoryList() {
           </table>
         </div>
       </Card>
+
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={() => {
+          if (itemToDelete) deleteInventoryItem(itemToDelete);
+          setItemToDelete(null);
+        }}
+        title="Delete Inventory Item"
+        message="Are you sure you want to delete this item? This will also remove all associated adjustment logs."
+      />
     </div>
   );
 }

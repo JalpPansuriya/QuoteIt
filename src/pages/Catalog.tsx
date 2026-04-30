@@ -8,11 +8,13 @@ import { Plus, Trash2, Edit2, Tag } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Material, Unit } from '../types';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 export function Catalog() {
   const { products, addProduct, updateProduct, deleteProduct, settings } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -125,9 +127,45 @@ export function Catalog() {
           <p className="text-slate-500 mt-1">Manage standard window types and items.</p>
         </div>
         {!isAdding && (
-          <Button variant="primary" className="gap-2" onClick={() => setIsAdding(true)}>
-            <Plus className="w-4 h-4" /> Add Product
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2 text-red-600 border-red-200 hover:bg-red-50" 
+              onClick={() => {
+                if(confirm('Are you sure you want to wipe all products and load the new Gaudani defaults?')) {
+                  // Delete all existing
+                  products.forEach(p => deleteProduct(p.id));
+                  
+                  // Add 32MM Sliding Series
+                  addProduct({
+                    id: uuidv4(),
+                    name: 'Gaudani - 32MM SLIDING SERIES',
+                    material: 'Aluminium',
+                    glassType: '11.52mm ST-167 Clear Reflective Laminated',
+                    baseRate: 0,
+                    unit: 'sq ft',
+                    createdAt: Date.now()
+                  });
+                  
+                  // Add 40MM Casement Series
+                  addProduct({
+                    id: uuidv4(),
+                    name: 'Gaudani - 40MM CASEMENT SERIES',
+                    material: 'Aluminium',
+                    glassType: '5mm Frosted Non Toughened',
+                    baseRate: 0,
+                    unit: 'sq ft',
+                    createdAt: Date.now() + 1
+                  });
+                }
+              }}
+            >
+              <Trash2 className="w-4 h-4" /> Reset DB & Load Gaudani
+            </Button>
+            <Button variant="primary" className="gap-2" onClick={() => setIsAdding(true)}>
+              <Plus className="w-4 h-4" /> Add Product
+            </Button>
+          </div>
         )}
       </div>
 
@@ -368,9 +406,7 @@ export function Catalog() {
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(product)} title="Edit">
                             <Edit2 className="h-4 w-4 text-slate-500" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                            if(window.confirm('Delete this product from catalog?')) deleteProduct(product.id);
-                          }} className="text-slate-400 hover:text-red-600 hover:bg-red-50" title="Delete">
+                          <Button variant="ghost" size="sm" onClick={() => setProductToDelete(product.id)} className="text-slate-400 hover:text-red-600 hover:bg-red-50" title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -382,6 +418,17 @@ export function Catalog() {
           </table>
         </div>
       </Card>
+
+      <ConfirmModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={() => {
+          if (productToDelete) deleteProduct(productToDelete);
+          setProductToDelete(null);
+        }}
+        title="Delete Product Template"
+        message="Are you sure you want to delete this product template from the catalog? This will not affect existing quotations or invoices that already use this product."
+      />
     </div>
   );
 }

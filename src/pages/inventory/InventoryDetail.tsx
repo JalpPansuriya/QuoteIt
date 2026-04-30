@@ -5,7 +5,8 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { ArrowLeft, Save, Plus, ArrowDownCircle, ArrowUpCircle, Package } from 'lucide-react';
+import { ArrowLeft, Save, Plus, ArrowDownCircle, ArrowUpCircle, Package, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency } from '../../lib/utils';
 import { format } from 'date-fns';
@@ -14,7 +15,7 @@ import type { InventoryItem, InventoryAdjustment } from '../../types';
 export default function InventoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { inventoryItems, inventoryAdjustments, products, updateInventoryItem, addInventoryAdjustment, user } = useStore();
+  const { inventoryItems, inventoryAdjustments, products, updateInventoryItem, addInventoryAdjustment, deleteInventoryAdjustment, user } = useStore();
 
   const item = inventoryItems.find(i => i.id === id);
   const adjustments = inventoryAdjustments
@@ -24,6 +25,7 @@ export default function InventoryDetail() {
   // ── All hooks must run unconditionally (Rules of Hooks) ──
   const [editing, setEditing] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
+  const [adjToDelete, setAdjToDelete] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     sku: '',
@@ -259,7 +261,17 @@ export default function InventoryDetail() {
                         {adj.adjustmentType === 'in' ? '+' : '−'}{adj.quantity}
                       </td>
                       <td className="px-6 py-4 text-slate-500">{adj.reason || '—'}</td>
-                      <td className="px-6 py-4 text-slate-500">{format(adj.adjustedAt, 'MMM dd, yyyy HH:mm')}</td>
+                      <td className="px-6 py-4 text-slate-500">
+                        <div className="flex items-center justify-between">
+                          <span>{format(adj.adjustedAt, 'MMM dd, yyyy HH:mm')}</span>
+                          <button 
+                            onClick={() => setAdjToDelete(adj.id)}
+                            className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -268,6 +280,17 @@ export default function InventoryDetail() {
           </div>
         </Card>
       </div>
+
+      <ConfirmModal
+        isOpen={!!adjToDelete}
+        onClose={() => setAdjToDelete(null)}
+        onConfirm={() => {
+          if (adjToDelete) deleteInventoryAdjustment(adjToDelete);
+          setAdjToDelete(null);
+        }}
+        title="Delete Adjustment Record"
+        message="Are you sure you want to delete this adjustment? This will also reverse the stock change in the current inventory."
+      />
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { Login } from './pages/Login';
 import ProjectList from './pages/projects/ProjectList';
 import ProjectForm from './pages/projects/ProjectForm';
 import ProjectDetail from './pages/projects/ProjectDetail';
-import { useStore } from './store/useStore';
+import { useStore, useHydration } from './store/useStore';
 import { getSupabase } from './lib/supabase';
 import { Loader2 } from 'lucide-react';
 
@@ -39,24 +39,26 @@ import ProjectProfitabilityReport from './pages/reports/ProjectProfitabilityRepo
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode, requiredRole?: 'admin' | 'site_person' }) {
   const { user, role, setUser, loadInitialData } = useStore();
-  const [loading, setLoading] = useState(!user);
+  const hydrated = useHydration();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      const supabase = getSupabase();
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          setUser(session.user);
-          loadInitialData();
-        }
-        setLoading(false);
-      });
-    } else {
-      setLoading(false);
-    }
-  }, [user, setUser, loadInitialData]);
+    if (!hydrated) return;
 
-  if (loading) {
+    const supabase = getSupabase();
+    
+    // Check session on mount/refresh
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        // Always trigger a fresh fetch on app load/refresh
+        loadInitialData();
+      }
+      setLoading(false);
+    });
+  }, [hydrated, setUser, loadInitialData]);
+
+  if (!hydrated || loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

@@ -1,4 +1,6 @@
+import React from 'react';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@supabase/supabase-js';
 import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress, UserRole } from '../types';
 import { supabaseService } from '../lib/supabaseService';
@@ -21,7 +23,17 @@ interface AppState {
   
   // Actions
   setUser: (user: User | null) => void;
-  setAll: (data: Partial<{ clients: Client[], products: Product[], quotes: Quote[], settings: AppSettings }>) => void;
+  setAll: (data: Partial<{ 
+    clients: Client[], 
+    products: Product[], 
+    quotes: Quote[], 
+    settings: AppSettings,
+    projects: Project[],
+    projectProgress: ProjectProgress[],
+    invoices: Invoice[],
+    payments: Payment[],
+    inventoryItems: InventoryItem[]
+  }>) => void;
   addClient: (client: Client) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
@@ -106,7 +118,9 @@ const initialSettings: AppSettings = {
   }
 };
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   user: null,
   clients: [],
   products: [],
@@ -167,6 +181,19 @@ export const useStore = create<AppState>((set, get) => ({
     autoSave(get());
   },
   updateQuote: (id, updated) => {
+    const existing = get().quotes.find(q => q.id === id);
+    if (existing && (existing.status === 'Approved' || existing.status === 'Invoiced')) {
+      const keys = Object.keys(updated);
+      // Only allow status updates or approval_notes updates on approved quotes
+      const allowedKeys = ['status', 'approvalNotes', 'convertedToInvoiceId', 'projectId'];
+      const isTryingToEditData = keys.some(k => !allowedKeys.includes(k));
+      
+      if (isTryingToEditData) {
+        console.warn("Quote is locked. Edit denied.");
+        return;
+      }
+    }
+
     set((state) => ({
       quotes: state.quotes.map((q) => q.id === id ? { ...q, ...updated, updatedAt: Date.now() } : q)
     }));
@@ -439,7 +466,14 @@ export const useStore = create<AppState>((set, get) => ({
           payments: cloudData.payments || [],
           projects: cloudData.projects || [],
           projectProgress: cloudData.projectProgress || [],
-          settings: cloudData.settings || initialSettings,
+          settings: {
+            ...initialSettings,
+            ...(cloudData.settings || {}),
+            features: {
+              ...initialSettings.features,
+              ...(cloudData.settings?.features || {})
+            }
+          },
           role: (cloudData.role as UserRole) || 'admin'
         });
       }
@@ -449,9 +483,8 @@ export const useStore = create<AppState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-
   addNotification: (message, type = 'success') => {
-    const id = uuidv4();
+    const id = (Math.random() * 1000000).toString();
     set((state) => ({
       notifications: [...state.notifications, { id, message, type }]
     }));
@@ -462,7 +495,48 @@ export const useStore = create<AppState>((set, get) => ({
       notifications: state.notifications.filter((n) => n.id !== id)
     }));
   }
-}));
+}),
+{
+  name: 'quoteit-app-storage',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({
+    clients: state.clients,
+    products: state.products,
+    quotes: state.quotes,
+    inventoryItems: state.inventoryItems,
+    inventoryAdjustments: state.inventoryAdjustments,
+    invoices: state.invoices,
+    payments: state.payments,
+    projects: state.projects,
+    projectProgress: state.projectProgress,
+    settings: state.settings,
+    role: state.role,
+    user: state.user
+  }),
+  onRehydrateStorage: () => (state) => {
+    if (state) {
+      state.isLoading = false;
+    }
+  },
+}
+));
+
+// Robust hydration hook for components
+export function useHydration() {
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    const unsubFinishHydration = useStore.persist.onFinishHydration(() => setHydrated(true));
+    
+    setHydrated(useStore.persist.hasHydrated());
+
+    return () => {
+      unsubFinishHydration();
+    };
+  }, []);
+
+  return hydrated;
+}
 
 // Helper for cloud auto-save (legacy — quotes/clients/products/settings only)
 let saveTimeout: any;

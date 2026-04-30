@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("Missing Supabase credentials in .env");
@@ -45,6 +45,17 @@ async function run() {
 
   // Wait, without auth, anon key might be blocked by RLS policies.
   // It's safer to just do this in the frontend if RLS is enabled!
+  
+  const { error: insertError } = await supabase.from('products').insert({
+    ...newProduct,
+    user_id: products.length > 0 ? products[0].user_id : '00000000-0000-0000-0000-000000000000'
+  });
+  
+  if (insertError) {
+    console.error("Failed to insert:", insertError);
+  } else {
+    console.log("Successfully inserted Gaudani product!");
+  }
 }
 
 run();

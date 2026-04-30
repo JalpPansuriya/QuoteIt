@@ -23,7 +23,12 @@ export function QuotesList() {
   }).sort((a, b) => b.createdAt - a.createdAt);
 
   const handleDuplicate = (quote: any) => {
-    const lastQuoteNum = quotes.length > 0 ? quotes[quotes.length - 1].quoteNumber : undefined;
+    const existingNumbers = quotes
+      .map(q => q.quoteNumber)
+      .filter(n => n.startsWith('QT-'));
+    const lastQuoteNum = existingNumbers.length > 0 
+      ? [...existingNumbers].sort((a, b) => b.localeCompare(a))[0] 
+      : undefined;
     
     const newQuote = {
       ...quote,
@@ -98,7 +103,9 @@ export function QuotesList() {
                   return (
                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-blue-600">
-                        <Link to={`/quotes/${q.id}`} className="hover:text-blue-800">{q.quoteNumber}</Link>
+                        <Link to={`/quotes/${q.id}`} className="hover:text-blue-800">
+                          {q.quoteNumber || 'UNNAMED'}
+                        </Link>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-900">{client?.name || 'Unknown Client'}</div>
@@ -139,7 +146,14 @@ export function QuotesList() {
                           <Button variant="ghost" size="sm" onClick={() => handleDuplicate(q)} title="Duplicate">
                             <Copy className="h-4 w-4 text-slate-500" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setQuoteToDelete(q.id)} className="text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setQuoteToDelete(q.id)} 
+                            className="text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-0" 
+                            title="Delete"
+                            disabled={q.status === 'Invoiced'}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

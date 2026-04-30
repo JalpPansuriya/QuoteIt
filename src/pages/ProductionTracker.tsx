@@ -105,7 +105,7 @@ export function ProductionTracker() {
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <p className="text-slate-900 font-black">{item.clientName}</p>
-                      <p className="text-[10px] text-blue-600 tracking-wider uppercase mt-0.5">#{item.quoteNumber}</p>
+                      <p className="text-[10px] text-blue-600 tracking-wider uppercase mt-0.5">#{item.quoteNumber || 'UNNAMED'}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-slate-900">{item.series || item.name}</p>

@@ -8,7 +8,7 @@ import { Select } from '../../components/ui/Select';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency, generateInvoiceNumber } from '../../lib/utils';
-import type { Invoice, InvoiceLineItem } from '../../types';
+import type { Invoice, InvoiceLineItem, InvoiceType } from '../../types';
 
 export default function InvoiceBuilder() {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ export default function InvoiceBuilder() {
   const [notes, setNotes] = useState('');
   const [taxRate, setTaxRate] = useState('18');
   const [discountAmount, setDiscountAmount] = useState('0');
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>('Partial');
   const [items, setItems] = useState<InvoiceLineItem[]>(() => {
     if (sourceQuote) {
       // ONLY include items that are marked as 'done' for partial invoicing
@@ -64,8 +65,27 @@ export default function InvoiceBuilder() {
   const total = taxableAmount + taxAmount;
 
   const handleSave = () => {
-    if (!clientId) return;
-    const invoice: Invoice = { id: uuidv4(), quoteId: sourceQuote?.id, projectId, clientId, invoiceNumber: generateInvoiceNumber(lastInvNum), status: 'Draft', issueDate: new Date(issueDate).getTime(), dueDate: new Date(dueDate).getTime(), subtotal, taxAmount, discountAmount: disc, total, amountPaid: 0, balanceDue: total, notes, items, createdAt: Date.now(), updatedAt: Date.now() };
+    const invoice: Invoice = { 
+      id: uuidv4(), 
+      quoteId: sourceQuote?.id, 
+      projectId, 
+      clientId, 
+      invoiceNumber: generateInvoiceNumber(lastInvNum), 
+      status: 'Draft', 
+      issueDate: new Date(issueDate).getTime(), 
+      dueDate: new Date(dueDate).getTime(), 
+      subtotal, 
+      taxAmount, 
+      discountAmount: disc, 
+      total, 
+      amountPaid: invoiceType === 'Final' ? total : 0, 
+      balanceDue: invoiceType === 'Final' ? 0 : total, 
+      notes: invoiceType === 'Final' ? `Final Summary Bill. ${notes}` : notes,
+      items, 
+      invoiceType,
+      createdAt: Date.now(), 
+      updatedAt: Date.now() 
+    };
     addInvoice(invoice);
     if (sourceQuote) updateQuote(sourceQuote.id, { status: 'Invoiced', convertedToInvoiceId: invoice.id });
     navigate(`/billing/${invoice.id}`);
@@ -92,6 +112,10 @@ export default function InvoiceBuilder() {
           </Select>
           <Input label="Issue Date" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
           <Input label="Due Date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <Select label="Invoice Type" value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as InvoiceType)}>
+            <option value="Partial">Partial Bill (Batch)</option>
+            <option value="Final">Final Summary Bill (Full)</option>
+          </Select>
         </div>
       </CardContent></Card>
       <Card><CardContent className="p-6">

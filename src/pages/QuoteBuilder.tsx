@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { useStore } from '../store/useStore';
+import { useParams, useNavigate, useLocation } from 'react-router';
+import { useStore, useHydration } from '../store/useStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Plus, Trash2, Save, Printer, ArrowLeft, Mail, FileText, MessageCircle, Share2, Loader2, LayoutTemplate } from 'lucide-react';
+import { Combobox } from '../components/ui/Combobox';
+import { Plus, Trash2, Save, Printer, ArrowLeft, Mail, FileText, MessageCircle, Share2, Loader2, LayoutTemplate, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Quote, QuoteLineItem, Unit } from '../types';
@@ -43,10 +44,12 @@ export function QuoteBuilder() {
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const isLocked = quote.status === 'Approved' || quote.status === 'Invoiced';
+  const hydrated = useHydration();
   const hasLoadedRef = React.useRef(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!hydrated || isLoading) return;
 
     if (isEditing) {
       if (!hasLoadedRef.current) {
@@ -62,11 +65,22 @@ export function QuoteBuilder() {
       }
     } else {
       if (!hasLoadedRef.current) {
-        // Logic for new quote - reset and generate number
-        const lastQuote = quotes.length > 0 ? quotes[quotes.length - 1] : undefined;
+        const searchParams = new URLSearchParams(location.search);
+        const paramProjectId = searchParams.get('projectId');
+        const paramClientId = searchParams.get('clientId');
+
+        // Logic for new quote - find highest existing number and increment
+        const existingNumbers = quotes
+          .map(q => q.quoteNumber)
+          .filter(n => n.startsWith('QT-'));
+        const lastQuoteNum = existingNumbers.length > 0 
+          ? [...existingNumbers].sort((a, b) => b.localeCompare(a))[0] 
+          : undefined;
+          
         setQuote({
-          quoteNumber: generateQuoteNumber(lastQuote?.quoteNumber),
-          clientId: '',
+          quoteNumber: generateQuoteNumber(lastQuoteNum),
+          clientId: paramClientId || '',
+          projectId: paramProjectId || '',
           status: 'Draft',
           date: Date.now(),
           validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
@@ -98,8 +112,8 @@ export function QuoteBuilder() {
     const computedItems = quote.items.map(item => {
       let multiplier = 1;
       if (item.unit === 'sq ft') {
-        const w = parseFloat(item.width as any) || 1;
-        const h = parseFloat(item.height as any) || 1;
+        const w = parseFloat(item.width as any) || 0;
+        const h = parseFloat(item.height as any) || 0;
         multiplier = w * h;
       }
       
@@ -123,18 +137,26 @@ export function QuoteBuilder() {
     const gstAmount = quote.applyGst ? afterDiscount * ((quote.gstRate || 18) / 100) : 0;
     const grandTotal = afterDiscount + gstAmount;
 
-    setQuote(prev => {
-      // Prevent infinite loop if nothing actually changed deeply
-      if (prev.subtotal === subtotal && prev.grandTotal === grandTotal) return prev;
-      return {
-        ...prev,
-        items: computedItems,
-        subtotal,
-        discountAmount,
-        gstAmount,
-        grandTotal
-      };
-    });
+    const computedQuote = {
+      ...quote,
+      items: computedItems,
+      subtotal,
+      discountAmount,
+      gstAmount,
+      grandTotal
+    };
+
+    // Check if anything actually changed (deep check for items and value check for totals)
+    const itemsChanged = JSON.stringify(quote.items) !== JSON.stringify(computedItems);
+    const totalsChanged = 
+      quote.subtotal !== subtotal || 
+      quote.discountAmount !== discountAmount || 
+      quote.gstAmount !== gstAmount || 
+      quote.grandTotal !== grandTotal;
+
+    if (itemsChanged || totalsChanged) {
+      setQuote(computedQuote);
+    }
   }, [quote.items, quote.discountType, quote.discountValue, quote.applyGst, quote.gstRate]);
 
 
@@ -152,7 +174,14 @@ export function QuoteBuilder() {
       unit: 'unit',
       discount: 0,
       subtotal: 0,
-      total: 0
+      total: 0,
+      sections: 2,
+      productionStatus: 'pending',
+      series: '',
+      glass: '',
+      hardware: '',
+      rubberColor: '',
+      tracks: ''
     };
     updateField('items', [...(quote.items || []), newItem]);
   };
@@ -219,16 +248,27 @@ export function QuoteBuilder() {
       alert("Please select a client.");
       return;
     }
+
+    // Ensure we have a quote number
+    let finalQuote = { ...quote };
+    if (!finalQuote.quoteNumber) {
+      const existingNumbers = quotes
+        .map(q => q.quoteNumber)
+        .filter(n => n.startsWith('QT-'));
+      const lastQuoteNum = existingNumbers.length > 0 
+        ? [...existingNumbers].sort((a, b) => b.localeCompare(a))[0] 
+        : undefined;
+      finalQuote.quoteNumber = generateQuoteNumber(lastQuoteNum);
+    }
     
     if (isEditing && id) {
-      updateQuote(id, quote as Quote);
+      updateQuote(id, finalQuote as Quote);
       setIsSaved(true);
     } else {
       const newId = uuidv4();
-      const newQuote = { ...quote, id: newId, createdAt: Date.now(), updatedAt: Date.now() } as Quote;
+      const newQuote = { ...finalQuote, id: newId, createdAt: Date.now(), updatedAt: Date.now() } as Quote;
       addQuote(newQuote);
-      setIsSaved(true);
-      navigate(`/quotes/${newId}`, { replace: true });
+      navigate(`/quotes/${newId}`);
     }
   };
 
@@ -423,25 +463,42 @@ export function QuoteBuilder() {
           </Button>
           <div>
             <h1 className="text-2xl font-black tracking-tighter text-slate-900">
-              {isEditing ? `Edit Quote ${quote.quoteNumber}` : 'New Quote'}
+              {isEditing ? `Edit Quote ${quote.quoteNumber}` : `New Quote ${quote.quoteNumber || ''}`}
             </h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isEditing && (
+          {isEditing && !isLocked && (
             <>
-              <Button variant="outline" className="gap-2 border-green-200 text-green-700 hover:bg-green-50" onClick={handleWhatsApp}>
-                <MessageCircle className="w-4 h-4" />
-                WhatsApp
-              </Button>
-              <Button variant="outline" className="gap-2" onClick={handlePrint}>
-                <Printer className="w-4 h-4" />
-                Print
+              <Button 
+                variant="outline" 
+                className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50" 
+                onClick={() => updateField('status', quote.status === 'Draft' ? 'Sent' : 'Approved')}
+              >
+                {quote.status === 'Draft' ? (
+                  <>
+                    <Share2 className="w-4 h-4" />
+                    Mark as Sent
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Approve Quotation
+                  </>
+                )}
               </Button>
               <Button 
-                variant="primary" 
-                className="gap-2 bg-blue-600 text-white border-none hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all" 
-                onClick={handleDownloadPDF}
+                variant="outline" 
+                className="gap-2 border-slate-200" 
+                onClick={handleWhatsApp}
+              >
+                <MessageCircle className="w-4 h-4 text-green-500" />
+                WhatsApp
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-2 border-slate-200" 
+                onClick={handlePrint}
                 disabled={isGeneratingPDF}
               >
                 {isGeneratingPDF ? (
@@ -453,10 +510,18 @@ export function QuoteBuilder() {
               </Button>
             </>
           )}
-          <Button variant="primary" className="gap-2 shadow-xl shadow-blue-500/20" onClick={handleSave} disabled={isSaved}>
-            <Save className="w-4 h-4" />
-            {isSaved ? 'Saved Successfully' : 'Save Quote'}
-          </Button>
+          {isLocked && (
+             <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                <Save className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Locked for Editing</span>
+             </div>
+          )}
+          {!isLocked && (
+            <Button variant="primary" className="gap-2 shadow-xl shadow-blue-500/20" onClick={handleSave} disabled={isSaved}>
+              <Save className="w-4 h-4" />
+              {isSaved ? 'Saved Successfully' : 'Save Quote'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -473,7 +538,7 @@ export function QuoteBuilder() {
                     label="Select Client" 
                     value={quote.clientId || ''} 
                     onChange={(e) => updateField('clientId', e.target.value)}
-                    disabled={isSaved}
+                    disabled={isSaved || isLocked}
                   >
                     <option value="" disabled>-- Choose Client --</option>
                     {clients.map(c => (
@@ -492,6 +557,17 @@ export function QuoteBuilder() {
                 >
                   <Plus className="w-5 h-5" />
                 </Button>
+              </div>
+
+              <div className="mt-4 print:hidden">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Quote Number</label>
+                <Input 
+                  className="mt-1 font-bold"
+                  value={quote.quoteNumber || ''}
+                  onChange={(e) => updateField('quoteNumber', e.target.value)}
+                  placeholder="QT-0001"
+                  disabled={isLocked}
+                />
               </div>
               
               <div className="hidden print:block">
@@ -567,7 +643,7 @@ export function QuoteBuilder() {
                            <select 
                             id={`cell-${index}-0`}
                             className="w-full h-11 px-4 py-1 text-sm font-bold bg-transparent outline-none focus:bg-blue-50/50 focus:ring-2 focus:ring-inset focus:ring-blue-500 appearance-none transition-all cursor-pointer disabled:cursor-default" 
-                            disabled={isSaved}
+                            disabled={isSaved || isLocked}
                             value={item.productId || ''}
                             onChange={(e) => updateItem(index, 'productId', e.target.value)}
                             onKeyDown={(e) => handleKeyDown(e, index, 0)}
@@ -583,7 +659,7 @@ export function QuoteBuilder() {
                                size="sm" 
                                className="h-6 text-[10px] uppercase font-bold tracking-wider text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
                                onClick={() => setEditingItemIndex(index)}
-                               disabled={isSaved}
+                               disabled={isSaved || isLocked}
                              >
                                {item.description || item.image ? 'Edit Specs/Image' : '+ Add Specs/Image'}
                              </Button>
@@ -619,7 +695,7 @@ export function QuoteBuilder() {
                             id={`cell-${index}-3`}
                             type="number" 
                             className="w-full h-11 px-2 text-center font-bold bg-transparent outline-none focus:bg-blue-50/50 focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-all disabled:opacity-50" 
-                            disabled={isSaved}
+                            disabled={isSaved || isLocked}
                             value={item.qty ?? ''}
                             onChange={(e) => updateItem(index, 'qty', e.target.value === '' ? undefined : parseInt(e.target.value))}
                             onKeyDown={(e) => handleKeyDown(e, index, 3)}
@@ -629,7 +705,7 @@ export function QuoteBuilder() {
                           <select 
                             id={`cell-${index}-4`}
                             className="w-full h-11 px-2 py-1 text-center text-[10px] font-black uppercase bg-transparent outline-none focus:bg-blue-50/50 focus:ring-2 focus:ring-inset focus:ring-blue-500 appearance-none transition-all cursor-pointer disabled:cursor-default"
-                            disabled={isSaved}
+                            disabled={isSaved || isLocked}
                             value={item.unit}
                             onChange={(e) => updateItem(index, 'unit', e.target.value)}
                             onKeyDown={(e) => handleKeyDown(e, index, 4)}
@@ -644,11 +720,28 @@ export function QuoteBuilder() {
                               id={`cell-${index}-5`}
                               type="number" 
                               className="w-full h-11 px-4 text-right font-bold bg-transparent outline-none focus:bg-blue-50/50 focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-all disabled:opacity-50" 
-                              disabled={isSaved}
+                              disabled={isSaved || isLocked}
                               value={item.rate ?? ''}
                               onChange={(e) => updateItem(index, 'rate', e.target.value === '' ? undefined : parseFloat(e.target.value))}
                               onKeyDown={(e) => handleKeyDown(e, index, 5)}
                             />
+                        </td>
+                        <td className="p-0 border-r border-slate-100 bg-slate-50/20">
+                           <div className="flex flex-col items-center justify-center h-full px-2 py-1 gap-1">
+                             <ProductionStatusBadge status={item.productionStatus || 'pending'} />
+                             <select 
+                               className="w-full text-[9px] font-bold bg-white border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-500 print:hidden"
+                               value={item.productionStatus || 'pending'}
+                               onChange={(e) => updateItem(index, 'productionStatus', e.target.value as ProductionStatus)}
+                               disabled={isSaved || isLocked}
+                             >
+                               <option value="pending">Pending</option>
+                               <option value="manufacturing">Manufacturing</option>
+                               <option value="done">Done</option>
+                               <option value="dispatched">Dispatched</option>
+                               <option value="reached">Reached</option>
+                             </select>
+                           </div>
                         </td>
                         <td className="px-4 py-1 text-right font-black text-slate-900 text-sm bg-slate-50/30">
                           {formatCurrency(item.total)}
@@ -656,7 +749,7 @@ export function QuoteBuilder() {
                         <td className="px-2 py-1 text-right print:hidden">
                           <button 
                             className="p-2 text-slate-300 hover:text-red-500 transition-colors disabled:opacity-0"
-                            disabled={isSaved}
+                            disabled={isSaved || isLocked}
                             onClick={() => removeItem(index)}
                           >
                             <Trash2 className="w-4 h-4" />

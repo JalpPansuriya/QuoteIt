@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useStore } from '../store/useStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -7,6 +7,7 @@ import { formatCurrency } from '../lib/utils';
 import { format } from 'date-fns';
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { quotes, clients, products, invoices, payments, inventoryItems, projects, projectProgress, role, updateQuote } = useStore();
 
   const totalRevenue = quotes
@@ -14,8 +15,12 @@ export function Dashboard() {
     .reduce((sum, q) => sum + q.grandTotal, 0);
 
   const pendingQuotes = quotes.filter(q => q.status === 'Sent' || q.status === 'Draft').length;
-  const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
-  const outstandingBalance = invoices.reduce((sum, i) => sum + i.balanceDue, 0);
+  const totalInvoiced = invoices
+    .filter(i => i.invoiceType !== 'Final')
+    .reduce((sum, i) => sum + i.total, 0);
+  const outstandingBalance = invoices
+    .filter(i => i.invoiceType !== 'Final')
+    .reduce((sum, i) => sum + i.balanceDue, 0);
   const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
   const activeProjects = projects.filter(p => p.status === 'Active').length;
   const lowStockItems = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold).length;
@@ -208,7 +213,7 @@ export function Dashboard() {
                   const client = clients.find(c => c.id === q.clientId);
                   return (
                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-slate-900">{q.quoteNumber}</td>
+                      <td className="px-6 py-4 font-bold text-slate-900">{q.quoteNumber || 'UNNAMED'}</td>
                       <td className="px-6 py-4 font-medium">{client?.name || 'Unknown'}</td>
                       <td className="px-6 py-4 text-slate-500">{format(q.date, 'MMM dd, yyyy')}</td>
                       <td className="px-6 py-4 font-bold">{formatCurrency(q.grandTotal)}</td>

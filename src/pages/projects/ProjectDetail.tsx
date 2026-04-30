@@ -278,7 +278,7 @@ export default function ProjectDetail() {
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Active Revision</span>
-                        <h4 className="text-xl font-black text-slate-900 mt-1">{projectQuotes[0].quoteNumber}</h4>
+                        <h4 className="text-xl font-black text-slate-900 mt-1">{projectQuotes[0].quoteNumber || 'UNNAMED'}</h4>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-black text-slate-900">₹{projectQuotes[0].grandTotal.toLocaleString()}</p>
@@ -383,7 +383,7 @@ export default function ProjectDetail() {
               <tbody className="divide-y divide-slate-50">
                 {projectQuotes.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => navigate(`/quotes/${q.id}`)}>
-                    <td className="px-8 py-5 font-black text-slate-900">{q.quoteNumber}</td>
+                    <td className="px-8 py-5 font-black text-slate-900">{q.quoteNumber || 'UNNAMED'}</td>
                     <td className="px-8 py-5 text-sm font-medium text-slate-500">{new Date(q.date).toLocaleDateString()}</td>
                     <td className="px-8 py-5">
                       <span className="px-3 py-1 rounded-full text-[10px] font-black border border-slate-100 bg-white text-slate-600 uppercase tracking-wider">

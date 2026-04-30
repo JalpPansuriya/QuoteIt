@@ -2,6 +2,7 @@ export type Material = 'UPVC' | 'Aluminium' | 'Wood';
 export type Unit = 'sq ft' | 'unit' | 'running ft';
 export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Invoiced' | 'Rejected';
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Partially Paid' | 'Paid' | 'Overdue';
+export type InvoiceType = 'Partial' | 'Final';
 export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Card' | 'Cheque' | 'Other';
 export type AdjustmentType = 'in' | 'out';
 export type UserRole = 'admin' | 'site_person';
@@ -222,6 +223,7 @@ export interface Invoice {
   lastPaymentDate?: number;
   notes: string;
   items: InvoiceLineItem[];
+  invoiceType: InvoiceType;
   createdAt: number;
   updatedAt: number;
 }

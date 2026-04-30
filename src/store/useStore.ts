@@ -2,6 +2,7 @@ import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress, UserRole } from '../types';
 import { supabaseService } from '../lib/supabaseService';
 

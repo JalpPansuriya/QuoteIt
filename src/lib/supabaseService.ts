@@ -1,5 +1,5 @@
 import { getSupabase } from './supabase';
-import { Client, Product, Quote, AppSettings, InventoryItem, InventoryAdjustment, Invoice, Payment } from '../types';
+import { Client, Product, Quote, AppSettings, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress } from '../types';
 
 export const supabaseService = {
   // ── Legacy bulk save (quotes editor auto-save) ──
@@ -471,6 +471,7 @@ export const supabaseService = {
       invoices: invoicesData?.map(inv => ({
         id: inv.id,
         quoteId: inv.quote_id || undefined,
+        projectId: inv.project_id || undefined,
         clientId: inv.client_id,
         invoiceNumber: inv.invoice_number,
         status: inv.status,
@@ -484,6 +485,7 @@ export const supabaseService = {
         balanceDue: Number(inv.balance_due),
         lastPaymentDate: inv.last_payment_date || undefined,
         notes: inv.notes || '',
+        invoiceType: inv.invoice_type || 'Final',
         items: (inv.invoice_line_items || []).map((item: any) => ({
           id: item.id,
           invoiceId: item.invoice_id,
@@ -508,6 +510,9 @@ export const supabaseService = {
         recordedBy: p.recorded_by,
         createdAt: new Date(p.created_at).getTime(),
       })) || [],
+      projects: [] as any[],
+      projectProgress: [] as any[],
+      role: profile?.role || 'admin',
     };
   },
 
@@ -526,6 +531,67 @@ export const supabaseService = {
   deleteProduct: async (id: string) => {
     const supabase = getSupabase();
     const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  deletePayment: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('payments').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteInventoryAdjustment: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('inventory_adjustments').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  saveProject: async (project: Project) => {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { error } = await supabase.from('projects').upsert({
+      id: project.id,
+      user_id: user.id,
+      client_id: project.clientId,
+      name: project.name,
+      location: project.location || null,
+      total_units: project.totalUnits,
+      unit_type: project.unitType,
+      status: project.status,
+      start_date: project.startDate ? new Date(project.startDate).toISOString() : null,
+      end_date: project.endDate ? new Date(project.endDate).toISOString() : null,
+      created_at: new Date(project.createdAt).toISOString(),
+      updated_at: new Date(project.updatedAt).toISOString(),
+    });
+    if (error) throw error;
+  },
+
+  deleteProject: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  saveProjectProgress: async (progress: ProjectProgress) => {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { error } = await supabase.from('project_progress').upsert({
+      id: progress.id,
+      project_id: progress.projectId,
+      units_completed: progress.unitsCompleted,
+      remarks: progress.remarks || null,
+      recorded_by: progress.recordedBy,
+      recorded_at: new Date(progress.recordedAt).toISOString(),
+      created_at: new Date(progress.createdAt).toISOString(),
+    });
+    if (error) throw error;
+  },
+
+  deleteProjectProgress: async (id: string) => {
+    const supabase = getSupabase();
+    const { error } = await supabase.from('project_progress').delete().eq('id', id);
     if (error) throw error;
   }
 };

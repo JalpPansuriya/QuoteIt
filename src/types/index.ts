@@ -119,8 +119,6 @@ export interface QuoteLineItem {
   displayMode?: 'diagram' | 'image';
 
   // Detailed Specs (copied from product or custom)
-  series?: string;
-  glass?: string;
   reinforcement?: string;
   frameJoins?: string;
   flyscreen?: string;

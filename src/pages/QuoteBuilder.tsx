@@ -10,6 +10,8 @@ import { Plus, Trash2, Save, Printer, ArrowLeft, Mail, FileText, MessageCircle, 
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Quote, QuoteLineItem, Unit } from '../types';
+import { WindowSchematic } from '../components/WindowSchematic';
+import { ProductionStatusBadge, ProductionStatus } from '../components/ProductionStatusBadge';
 
 export function QuoteBuilder() {
   const { id } = useParams();

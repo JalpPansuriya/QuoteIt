@@ -298,26 +298,28 @@ export const supabaseService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Load Profile
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    
-    // Load Clients
-    const { data: clients } = await supabase.from('clients').select('*').eq('user_id', user.id);
-    
-    // Load Products
-    const { data: products } = await supabase.from('products').select('*').eq('user_id', user.id);
-    
-    // Load Quotes
-    const { data: quotesData } = await supabase.from('quotes').select('*, quote_items(*)').eq('user_id', user.id);
-
-    // Load Inventory
-    const { data: inventoryData } = await supabase.from('inventory_items').select('*, inventory_adjustments(*)').eq('user_id', user.id);
-
-    // Load Invoices
-    const { data: invoicesData } = await supabase.from('invoices').select('*, invoice_line_items(*)').eq('user_id', user.id);
-
-    // Load Payments
-    const { data: paymentsData } = await supabase.from('payments').select('*').eq('user_id', user.id);
+    // Fire ALL queries in parallel for maximum speed
+    const [
+      { data: profile },
+      { data: clients },
+      { data: products },
+      { data: quotesData },
+      { data: inventoryData },
+      { data: invoicesData },
+      { data: paymentsData },
+      { data: projectsData },
+      { data: progressData },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('clients').select('*').eq('user_id', user.id),
+      supabase.from('products').select('*').eq('user_id', user.id),
+      supabase.from('quotes').select('*, quote_items(*)').eq('user_id', user.id),
+      supabase.from('inventory_items').select('*, inventory_adjustments(*)').eq('user_id', user.id),
+      supabase.from('invoices').select('*, invoice_line_items(*)').eq('user_id', user.id),
+      supabase.from('payments').select('*').eq('user_id', user.id),
+      supabase.from('projects').select('*').eq('user_id', user.id),
+      supabase.from('project_progress').select('*'),
+    ]);
 
     return {
       settings: {
@@ -510,8 +512,28 @@ export const supabaseService = {
         recordedBy: p.recorded_by,
         createdAt: new Date(p.created_at).getTime(),
       })) || [],
-      projects: [] as any[],
-      projectProgress: [] as any[],
+      projects: projectsData?.map(p => ({
+        id: p.id,
+        clientId: p.client_id,
+        name: p.name,
+        location: p.location || '',
+        totalUnits: Number(p.total_units),
+        unitType: p.unit_type,
+        status: p.status,
+        startDate: p.start_date ? new Date(p.start_date).getTime() : undefined,
+        endDate: p.end_date ? new Date(p.end_date).getTime() : undefined,
+        createdAt: new Date(p.created_at).getTime(),
+        updatedAt: new Date(p.updated_at).getTime(),
+      })) || [],
+      projectProgress: progressData?.map(pp => ({
+        id: pp.id,
+        projectId: pp.project_id,
+        unitsCompleted: Number(pp.units_completed),
+        remarks: pp.remarks || '',
+        recordedBy: pp.recorded_by,
+        recordedAt: new Date(pp.recorded_at).getTime(),
+        createdAt: new Date(pp.created_at).getTime(),
+      })) || [],
       role: profile?.role || 'admin',
     };
   },

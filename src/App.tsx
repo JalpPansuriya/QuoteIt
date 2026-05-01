@@ -24,6 +24,11 @@ import InvoiceList from './pages/billing/InvoiceList';
 import InvoiceBuilder from './pages/billing/InvoiceBuilder';
 import InvoiceDetail from './pages/billing/InvoiceDetail';
 
+// Inventory
+import InventoryList from './pages/inventory/InventoryList';
+import InventoryForm from './pages/inventory/InventoryForm';
+import InventoryDetail from './pages/inventory/InventoryDetail';
+
 // Payments
 import PaymentList from './pages/payments/PaymentList';
 import PaymentForm from './pages/payments/PaymentForm';
@@ -97,6 +102,11 @@ export default function App() {
           <Route path="/projects/new" element={<ProtectedRoute requiredRole="admin"><ProjectForm /></ProtectedRoute>} />
           <Route path="/projects/edit/:id" element={<ProtectedRoute requiredRole="admin"><ProjectForm /></ProtectedRoute>} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
+
+          {/* Inventory */}
+          <Route path="/inventory" element={<ProtectedRoute requiredRole="admin"><InventoryList /></ProtectedRoute>} />
+          <Route path="/inventory/new" element={<ProtectedRoute requiredRole="admin"><InventoryForm /></ProtectedRoute>} />
+          <Route path="/inventory/:id" element={<ProtectedRoute requiredRole="admin"><InventoryDetail /></ProtectedRoute>} />
 
           {/* Production */}
           <Route path="/production" element={<ProtectedRoute requiredRole="admin"><ProductionTracker /></ProtectedRoute>} />

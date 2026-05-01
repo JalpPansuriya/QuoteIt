@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
-import { Home, FileText, Users, Box, Settings, Receipt, CreditCard, BarChart3, FolderKanban, Factory } from 'lucide-react';
+import { Home, FileText, Users, Box, Settings, Receipt, CreditCard, BarChart3, FolderKanban, Factory, Package } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Auth } from './Auth';
 import { Toaster } from './ui/Toaster';
@@ -13,6 +13,7 @@ export function Layout() {
     { name: 'Quotes', href: '/quotes', icon: FileText },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
     { name: 'Production', href: '/production', icon: Factory },
+    { name: 'Inventory', href: '/inventory', icon: Package },
     { name: 'Billing', href: '/billing', icon: Receipt },
     { name: 'Payments', href: '/payments', icon: CreditCard },
     { name: 'Reports', href: '/reports', icon: BarChart3 },

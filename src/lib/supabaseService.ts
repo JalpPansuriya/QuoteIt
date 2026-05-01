@@ -115,6 +115,7 @@ export const supabaseService = {
           terms: quote.terms,
           version: quote.version || 1,
           parent_quote_id: quote.parentQuoteId || null,
+          project_id: quote.projectId || null,
           expiry_date: quote.expiryDate || null,
           approval_notes: quote.approvalNotes || null,
           converted_to_invoice_id: quote.convertedToInvoiceId || null,
@@ -122,8 +123,8 @@ export const supabaseService = {
         });
       if (quoteError) throw quoteError;
 
-      // Save Items for this quote
-      if (quote.items.length > 0) {
+      // Save Items for this quote (skip if invoiced to avoid hitting the DB lock triggers on identical upserts)
+      if (quote.items.length > 0 && quote.status !== 'Invoiced') {
         const { error: itemsError } = await supabase
           .from('quote_items')
           .upsert(quote.items.map(item => ({
@@ -400,6 +401,7 @@ export const supabaseService = {
         terms: q.terms,
         version: q.version || 1,
         parentQuoteId: q.parent_quote_id || undefined,
+        projectId: q.project_id || undefined,
         expiryDate: q.expiry_date || undefined,
         approvalNotes: q.approval_notes || undefined,
         convertedToInvoiceId: q.converted_to_invoice_id || undefined,

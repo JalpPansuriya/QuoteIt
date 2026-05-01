@@ -10,7 +10,7 @@ import type { InvoiceStatus } from '../../types';
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invoices, clients, payments, updateInvoice, settings } = useStore();
+  const { invoices, clients, payments, updateInvoice, settings, projects } = useStore();
 
   const invoice = invoices.find(inv => inv.id === id);
   const client = invoice ? clients.find(c => c.id === invoice.clientId) : null;
@@ -41,59 +41,273 @@ export default function InvoiceDetail() {
   };
 
   const handlePdfExport = async () => {
-    // Load jsPDF + AutoTable via CDN (same pattern as QuoteBuilder)
     const loadScript = (src: string): Promise<void> => new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
       const s = document.createElement('script');
       s.src = src; s.async = true; s.onload = () => resolve(); s.onerror = reject;
       document.body.appendChild(s);
     });
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+    
+    try {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      const { jsPDF } = (window as any).jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const margin = 10;
+      let yPos = 15;
 
-    const { jsPDF } = (window as any).jspdf;
-    const doc = new jsPDF();
-    const safeCurrency = (amount: number) => formatCurrency(amount).replace('₹', 'Rs. ');
+      const safeCurrency = (amount: number) => amount.toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
-    doc.setFontSize(20); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
-    doc.text(invoice.invoiceNumber, 14, 22);
-    doc.setFontSize(18); doc.setTextColor(148, 163, 184);
-    doc.text("INVOICE", 195, 20, { align: "right" });
+      const drawPageBorder = (d: any) => {
+        d.setDrawColor(150, 150, 150);
+        d.setLineWidth(0.3);
+        d.rect(5, 5, 200, 287);
+      };
 
-    doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139);
-    doc.text(`Client: ${client?.name || 'N/A'}`, 14, 32);
-    doc.text(`Issue: ${format(invoice.issueDate, 'MMM dd, yyyy')}`, 14, 38);
-    doc.text(`Due: ${format(invoice.dueDate, 'MMM dd, yyyy')}`, 14, 44);
-    doc.text(`Status: ${invoice.status}`, 14, 50);
+      drawPageBorder(doc);
 
-    (doc as any).autoTable({
-      startY: 58,
-      head: [['#', 'DESCRIPTION', 'QTY', 'RATE', 'TOTAL']],
-      body: invoice.items.map((item, i) => [i + 1, item.description, item.quantity, safeCurrency(item.unitPrice), safeCurrency(item.total)]),
-      theme: 'plain',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      bodyStyles: { fontSize: 9, textColor: [15, 23, 42], cellPadding: 5 },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 0: { halign: 'center' }, 4: { halign: 'right', fontStyle: 'bold' } },
-    });
+      const getImgInfo = (src: string): Promise<{w: number, h: number}> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+          img.onerror = () => resolve({ w: 0, h: 0 });
+          img.src = src;
+        });
+      };
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 80;
-    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(100, 116, 139);
-    doc.text(`Subtotal: ${safeCurrency(invoice.subtotal)}`, 195, finalY + 10, { align: "right" });
-    doc.text(`Discount: -${safeCurrency(invoice.discountAmount)}`, 195, finalY + 16, { align: "right" });
-    doc.text(`Tax: ${safeCurrency(invoice.taxAmount)}`, 195, finalY + 22, { align: "right" });
-    doc.setFontSize(14); doc.setTextColor(15, 23, 42);
-    doc.text(`Total: ${safeCurrency(invoice.total)}`, 195, finalY + 32, { align: "right" });
+      if (settings.features.companyLogo) {
+        try {
+          const dims = await getImgInfo(settings.features.companyLogo);
+          let logoW = 25; let logoH = 25;
+          if (dims.w > 0 && dims.h > 0) {
+            const maxH = 20; const maxW = 50;
+            const ratio = dims.w / dims.h;
+            logoH = maxH; logoW = logoH * ratio;
+            if (logoW > maxW) { logoW = maxW; logoH = logoW / ratio; }
+          }
+          doc.addImage(settings.features.companyLogo, 'PNG', margin, 10, logoW, logoH);
+        } catch (e) {
+          doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(settings.features.companyName || "Prince Windows", margin, yPos);
+        }
+      } else {
+        doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(settings.features.companyName || "Prince Windows", margin, yPos);
+      }
 
-    // Footer with Company Info
-    doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
-    doc.text(settings.features.companyName, 14, finalY + 50);
-    doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139);
-    doc.text(settings.features.companyTagline, 14, finalY + 55);
+      doc.setFontSize(28);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(50, 50, 50);
+      doc.text("INVOICE", 105, yPos + 5, { align: "center" });
 
-    doc.setFontSize(8); doc.setTextColor(148, 163, 184);
-    doc.text(`Generated by ${settings.features.companyName}`, 105, doc.internal.pageSize.height - 10, { align: "center" });
-    doc.save(`${invoice.invoiceNumber}.pdf`);
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.text(settings.features.companyName || "Prince Windows", 200, yPos + 2, { align: "right" });
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(150, 150, 150);
+      doc.text((settings.features.companyTagline || "WE MAKE WINDOWS"), 200, yPos + 7, { align: "right" });
+
+      yPos += 15;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, yPos, 200, yPos);
+
+      yPos += 8;
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text("Invoice no.", margin, yPos);
+      doc.text("Project name", margin, yPos + 5);
+      doc.text("Client name", margin, yPos + 10);
+      
+      const project = invoice.projectId ? projects.find(p => p.id === invoice.projectId) : null;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text(": " + (invoice.invoiceNumber?.replace(/\D/g, '') || '0001'), margin + 25, yPos);
+      doc.text(": " + (project?.name?.toUpperCase() || 'STANDALONE'), margin + 25, yPos + 5);
+      doc.text(": " + (client?.name?.toUpperCase() || 'N/A'), margin + 25, yPos + 10);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Date: " + new Date(invoice.issueDate || Date.now()).toLocaleDateString('en-GB'), 200, yPos, { align: "right" });
+      doc.text("Due Date: " + new Date(invoice.dueDate || Date.now()).toLocaleDateString('en-GB'), 200, yPos + 5, { align: "right" });
+
+      yPos += 20;
+      
+      doc.setDrawColor(120, 120, 120);
+      doc.setLineWidth(0.2);
+      doc.rect(margin, yPos, 190, 10);
+      
+      const cols = [
+        { label: "Description", x: margin, w: 100 },
+        { label: "Qt.", x: margin + 100, w: 20 },
+        { label: "Unit price Rs.", x: margin + 120, w: 35 },
+        { label: "Total Rs.", x: margin + 155, w: 35 }
+      ];
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      cols.forEach(c => {
+        doc.text(c.label, c.x + (c.w/2), yPos + 6, { align: "center" });
+        if (c.x > margin) doc.line(c.x, yPos, c.x, yPos + 10);
+      });
+
+      yPos += 10;
+
+      (invoice.items || []).forEach((item, index) => {
+        const itemH = 15;
+        if (yPos + itemH > 280) {
+           doc.setFontSize(7);
+           doc.setTextColor(150, 150, 150);
+           doc.text(`Page 1 of 2`, 105, 285, { align: "center" });
+           doc.addPage();
+           drawPageBorder(doc);
+           yPos = 20;
+        }
+
+        doc.setDrawColor(120, 120, 120);
+        doc.rect(margin, yPos, 190, itemH);
+        
+        doc.line(margin + 100, yPos, margin + 100, yPos + itemH);
+        doc.line(margin + 120, yPos, margin + 120, yPos + itemH);
+        doc.line(margin + 155, yPos, margin + 155, yPos + itemH);
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        
+        const descLines = doc.splitTextToSize(item.description || '-', 90);
+        doc.text(descLines, margin + 5, yPos + 6);
+        
+        doc.text(item.quantity.toString(), margin + 100 + 10, yPos + 8, { align: "center" });
+        doc.text(safeCurrency(item.unitPrice || 0), margin + 120 + 17.5, yPos + 8, { align: "center" });
+        doc.text(safeCurrency(item.total || 0), margin + 155 + 17.5, yPos + 8, { align: "center" });
+
+        doc.setFontSize(7);
+        doc.setTextColor(200, 200, 200);
+        doc.text((index + 1).toString(), margin + 1.5, yPos + 3.5);
+
+        yPos += itemH;
+      });
+
+      yPos += 10;
+      const totalColX = 130;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      
+      doc.text("Subtotal", totalColX, yPos);
+      doc.text(safeCurrency(invoice.subtotal || 0) + " Rs.", 200, yPos, { align: "right" });
+
+      if (invoice.discountAmount > 0) {
+        yPos += 6;
+        doc.text("Discount", totalColX, yPos);
+        doc.text("-" + safeCurrency(invoice.discountAmount || 0) + " Rs.", 200, yPos, { align: "right" });
+      }
+
+      if (invoice.taxAmount > 0) {
+        yPos += 6;
+        doc.text("GST", totalColX, yPos);
+        doc.text(safeCurrency(invoice.taxAmount || 0) + " Rs.", 200, yPos, { align: "right" });
+      }
+
+      yPos += 8;
+      doc.setFontSize(12);
+      doc.text("Grand Total", totalColX, yPos);
+      doc.text(safeCurrency(invoice.total || 0) + " Rs.", 200, yPos, { align: "right" });
+
+      if (invoice.amountPaid > 0) {
+        yPos += 6;
+        doc.setFontSize(10);
+        doc.setTextColor(22, 163, 74); // Green
+        doc.text("Amount Paid", totalColX, yPos);
+        doc.text(safeCurrency(invoice.amountPaid || 0) + " Rs.", 200, yPos, { align: "right" });
+        
+        yPos += 6;
+        doc.setTextColor(220, 38, 38); // Red
+        doc.text("Balance Due", totalColX, yPos);
+        doc.text(safeCurrency(invoice.balanceDue || 0) + " Rs.", 200, yPos, { align: "right" });
+      }
+
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page 1 of 2`, 105, 285, { align: "center" });
+
+      doc.addPage();
+      drawPageBorder(doc);
+      yPos = 20;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(220, 38, 38);
+      doc.text("TERMS AND CONDITIONS", 105, yPos, { align: "center" });
+
+      yPos += 15;
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+
+      const terms = [
+        "100% Advance Payment to be made while placing the order.",
+        "Any replacement or removal of windows will be charged Extra.",
+        "Pre & Post inspection of the site will be done by both client and us.",
+        "Quotation has to be checked and verified by the client.",
+        "Once the quotation is finalized and order placed, no changes are permitted.",
+        "Rates will be re-calculated if there is a variation in height or width more than 150mm after site inspection.",
+        "Glass: There is no warranty for fragile material and protection for it will be done by client.",
+        "There is no warranty for glass once installation is done.",
+        "For manufacturing defect, client has to inform us within 48 hours after installation. After the time period, Silvercoin Door & Window System will be not liable for any defects.",
+        "Scaffolding/Crane Service, electricity,storage for material and cleaning of glass & window will be under customer's scope.",
+        "Any Damage or Breackage of Sill/Stone/Glass White will not be our responsibility.",
+        "Transportation Charges will be additional(Extra) and comes under client's scope.",
+        "Delivery time :- 40 - 60 days",
+        "Quotation Validity :- 15 days"
+      ];
+
+      terms.forEach((term) => {
+        doc.setTextColor(0, 0, 0);
+        doc.text("•", margin + 5, yPos);
+        const lines = doc.splitTextToSize(term, 175);
+        doc.text(lines, margin + 12, yPos);
+        yPos += (lines.length * 5) + 4;
+      });
+
+      doc.setTextColor(255, 0, 0);
+      doc.text("**Above Mentioned Rates Does Not Include Mosquito Mesh**", margin + 5, yPos);
+
+      yPos = 245;
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(margin, yPos, 190, 30);
+      doc.line(margin + 95, yPos, margin + 95, yPos + 30);
+      doc.line(margin, yPos + 10, margin + 190, yPos + 10);
+      doc.line(margin, yPos + 20, margin + 190, yPos + 20);
+
+      doc.setFontSize(8);
+      doc.setTextColor(30, 41, 59);
+      doc.text("AGREED TO AND ACCEPTED BY:", margin + 3, yPos + 7);
+      doc.text("AGREED TO AND ACCEPTED BY:", margin + 98, yPos + 7);
+      doc.setFont("helvetica", "bold");
+      doc.text(settings.features.companyName?.toUpperCase() || "PRINCE WINDOWS", margin + 98, yPos + 17);
+      doc.setFont("helvetica", "normal");
+      doc.text("SIGN:", margin + 3, yPos + 27);
+      doc.text("SIGN:", margin + 98, yPos + 27);
+
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`${new Date().toLocaleString()}`, margin, 285);
+      doc.text(`Page 2 of 2`, 105, 285, { align: "center" });
+
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `${invoice.invoiceNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 200);
+    } catch (err: any) {
+      console.error("PDF Error:", err);
+      alert(`Final PDF Error: "${err.message || 'Unknown'}"`);
+    }
   };
 
   return (

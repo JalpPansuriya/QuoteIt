@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress, UserRole } from '../types';
+import { Client, Product, Quote, AppSettings, MetaDataValue, InventoryItem, InventoryAdjustment, Invoice, Payment, Project, ProjectProgress, UserRole, Notification } from '../types';
 import { supabaseService } from '../lib/supabaseService';
 
 interface AppState {
@@ -21,6 +21,7 @@ interface AppState {
   role: UserRole | null;
   isLoading: boolean;
   notifications: { id: string; message: string; type: 'success' | 'error' | 'info' | 'delete' }[];
+  alerts: Notification[];
   
   // Actions
   setUser: (user: User | null) => void;
@@ -88,6 +89,12 @@ interface AppState {
   // Notification Actions
   addNotification: (message: string, type?: 'success' | 'error' | 'info' | 'delete') => void;
   removeNotification: (id: string) => void;
+
+  // Persistent Alert Actions
+  addAlert: (alert: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  markAlertAsRead: (id: string) => void;
+  clearAllAlerts: () => void;
+  checkHealth: () => void;
 }
 
 const initialSettings: AppSettings = {
@@ -136,6 +143,7 @@ export const useStore = create<AppState>()(
   role: null,
   isLoading: true,
   notifications: [],
+  alerts: [],
 
   setUser: (user) => set({ user }),
 
@@ -495,6 +503,62 @@ export const useStore = create<AppState>()(
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id)
     }));
+  },
+  
+  addAlert: (alert) => {
+    const id = uuidv4();
+    set((state) => ({
+      alerts: [{ ...alert, id, timestamp: Date.now(), read: false }, ...state.alerts].slice(0, 50)
+    }));
+    get().addNotification(alert.message, alert.type === 'error' ? 'error' : (alert.type === 'warning' ? 'error' : 'info'));
+  },
+  markAlertAsRead: (id) => {
+    set((state) => ({
+      alerts: state.alerts.map(a => a.id === id ? { ...a, read: true } : a)
+    }));
+  },
+  clearAllAlerts: () => set({ alerts: [] }),
+  checkHealth: () => {
+    const state = get();
+    const now = Date.now();
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    
+    // 1. Low Inventory
+    state.inventoryItems.forEach(item => {
+      if (item.quantityOnHand <= item.reorderThreshold) {
+        const message = `Low stock: ${item.name} (${item.quantityOnHand} ${item.unit} remaining)`;
+        const exists = state.alerts.some(a => a.message === message && !a.read);
+        if (!exists) {
+          state.addAlert({ type: 'warning', message, link: '/inventory' });
+        }
+      }
+    });
+
+    // 2. Overdue Invoices
+    state.invoices.forEach(inv => {
+      if (inv.status !== 'Paid' && inv.dueDate < (now - threeDaysMs)) {
+        const message = `Overdue: Invoice ${inv.invoiceNumber} is 3+ days late.`;
+        const exists = state.alerts.some(a => a.message === message && !a.read);
+        if (!exists) {
+          state.addAlert({ type: 'error' as any, message, link: '/billing' });
+        }
+      }
+    });
+
+    // 3. Quotes Pending Production
+    state.quotes.forEach(quote => {
+      if (quote.status === 'Approved' && !quote.convertedToInvoiceId) {
+        // Check if any item is not yet manufacturing
+        const pendingItems = quote.items?.filter(i => i.productionStatus === 'pending') || [];
+        if (pendingItems.length > 0) {
+          const message = `Pending: Quote ${quote.quoteNumber} needs production start.`;
+          const exists = state.alerts.some(a => a.message === message && !a.read);
+          if (!exists) {
+            state.addAlert({ type: 'info', message, link: '/production' });
+          }
+        }
+      }
+    });
   }
 }),
 {
@@ -512,7 +576,8 @@ export const useStore = create<AppState>()(
     projectProgress: state.projectProgress,
     settings: state.settings,
     role: state.role,
-    user: state.user
+    user: state.user,
+    alerts: state.alerts
   }),
   onRehydrateStorage: () => (state) => {
     if (state) {

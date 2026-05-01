@@ -5,6 +5,7 @@ import { formatCurrency } from '../../lib/utils';
 import { Briefcase, TrendingUp, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { isWithinInterval } from 'date-fns';
 import { FilterBar } from '../../components/FilterBar';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 export default function ProjectProfitabilityReport() {
   const { projects, quotes, invoices, payments, clients } = useStore();
@@ -15,8 +16,8 @@ export default function ProjectProfitabilityReport() {
 
   const projectStats = projects
     .filter(p => {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
+      const fromDate = new Date(from + 'T00:00:00.000');
+      const toDate = new Date(to + 'T23:59:59.999');
       const interval = { start: fromDate, end: toDate };
       const inDateRange = isWithinInterval(new Date(p.createdAt), interval);
       const inProject = selectedProjectId === 'All' || p.id === selectedProjectId;
@@ -117,6 +118,60 @@ export default function ProjectProfitabilityReport() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="p-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-6">Profitability & Collection Analysis</h3>
+        <div className="h-[400px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis 
+                type="number" 
+                dataKey="totalQuoted" 
+                name="Quoted Value" 
+                unit="₹" 
+                tick={{ fill: '#64748b', fontSize: 12 }}
+                tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+                axisLine={false}
+              />
+              <YAxis 
+                type="number" 
+                dataKey="totalCollected" 
+                name="Total Collected" 
+                unit="₹" 
+                tick={{ fill: '#64748b', fontSize: 12 }}
+                tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+                axisLine={false}
+              />
+              <ZAxis type="number" dataKey="billingProgress" range={[50, 400]} name="Billing Progress" unit="%" />
+              <RechartsTooltip 
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{ 
+                  borderRadius: '12px', 
+                  border: '1px solid #f1f5f9', 
+                  boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  padding: '12px'
+                }}
+                formatter={(value: any, name: string) => [typeof value === 'number' ? formatCurrency(value) : value, name]}
+              />
+              <Scatter 
+                name="Projects" 
+                data={projectStats} 
+                fill="#3b82f6" 
+                fillOpacity={0.6}
+                stroke="#2563eb"
+                strokeWidth={2}
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex justify-center gap-6 mt-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500 opacity-60" />
+            <span className="text-xs font-medium text-slate-500">Bubble Size = Billing Progress %</span>
+          </div>
+        </div>
+      </Card>
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

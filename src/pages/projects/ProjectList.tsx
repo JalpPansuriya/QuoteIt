@@ -20,8 +20,8 @@ export default function ProjectList() {
   const [selectedProjectId, setSelectedProjectId] = useState('All');
 
   const filteredProjects = projects.filter(p => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from + 'T00:00:00.000');
+    const toDate = new Date(to + 'T23:59:59.999');
     const interval = { start: fromDate, end: toDate };
 
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -20,8 +20,8 @@ export default function InventoryList() {
 
   const filtered = inventoryItems
     .filter(i => {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
+      const fromDate = new Date(from + 'T00:00:00.000');
+      const toDate = new Date(to + 'T23:59:59.999');
       const interval = { start: fromDate, end: toDate };
       const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.sku.toLowerCase().includes(search.toLowerCase());
       const inDateRange = isWithinInterval(new Date(i.createdAt), interval);

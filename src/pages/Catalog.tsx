@@ -18,14 +18,14 @@ export function Catalog() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
-  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().split('T')[0]; });
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
   const [selectedProjectId, setSelectedProjectId] = useState('All');
   const [search, setSearch] = useState('');
 
   const filteredProducts = products.filter(p => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from + 'T00:00:00.000');
+    const toDate = new Date(to + 'T23:59:59.999');
     const interval = { start: fromDate, end: toDate };
     
     const inDateRange = isWithinInterval(new Date(p.createdAt || 0), interval);

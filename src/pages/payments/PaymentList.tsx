@@ -19,8 +19,8 @@ export default function PaymentList() {
 
   const filtered = payments
     .filter(p => {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
+      const fromDate = new Date(from + 'T00:00:00.000');
+      const toDate = new Date(to + 'T23:59:59.999');
       const interval = { start: fromDate, end: toDate };
 
       const inv = invoices.find(i => i.id === p.invoiceId);

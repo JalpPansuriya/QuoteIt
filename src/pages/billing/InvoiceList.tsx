@@ -32,8 +32,8 @@ export default function InvoiceList() {
 
   const filtered = invoices
     .filter(inv => {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
+      const fromDate = new Date(from + 'T00:00:00.000');
+      const toDate = new Date(to + 'T23:59:59.999');
       const interval = { start: fromDate, end: toDate };
 
       const clientName = clients.find(c => c.id === inv.clientId)?.name.toLowerCase() || '';

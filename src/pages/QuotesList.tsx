@@ -22,8 +22,8 @@ export function QuotesList() {
   const [selectedProjectId, setSelectedProjectId] = useState('All');
 
   const filteredQuotes = quotes.filter(q => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from + 'T00:00:00.000');
+    const toDate = new Date(to + 'T23:59:59.999');
     const interval = { start: fromDate, end: toDate };
 
     const clientName = clients.find(c => c.id === q.clientId)?.name.toLowerCase() || '';

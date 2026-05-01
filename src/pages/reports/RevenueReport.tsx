@@ -17,8 +17,8 @@ export default function RevenueReport() {
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
   const [selectedProjectId, setSelectedProjectId] = useState('All');
 
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
+  const fromDate = new Date(from + 'T00:00:00.000');
+  const toDate = new Date(to + 'T23:59:59.999');
   const dateRangeInvalid = fromDate > toDate;
 
   const interval = { start: fromDate, end: toDate };

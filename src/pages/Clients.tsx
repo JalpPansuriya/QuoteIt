@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -16,14 +17,14 @@ export function Clients() {
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
-  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 10); return d.toISOString().split('T')[0]; });
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
   const [selectedProjectId, setSelectedProjectId] = useState('All');
   const [search, setSearch] = useState('');
 
   const filteredClients = clients.filter(c => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from + 'T00:00:00.000');
+    const toDate = new Date(to + 'T23:59:59.999');
     const interval = { start: fromDate, end: toDate };
 
     const inDateRange = isWithinInterval(new Date(c.createdAt || 0), interval);
@@ -150,6 +151,13 @@ export function Clients() {
                      <span className="line-clamp-2">{client.address}</span>
                    </div>
                  )}
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <Link to={`/clients/${client.id}`} className="w-full block">
+                  <Button variant="outline" size="sm" className="w-full text-[10px] font-black uppercase tracking-widest text-blue-600 border-blue-50 hover:bg-blue-50">
+                    View Customer History
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>

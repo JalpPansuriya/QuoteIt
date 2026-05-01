@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
 import { isWithinInterval } from 'date-fns';
 import { FilterBar } from '../../components/FilterBar';
+import { FunnelChart, Funnel, LabelList, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from 'recharts';
 
 export default function QuoteConversionReport() {
   const navigate = useNavigate();
@@ -16,8 +17,8 @@ export default function QuoteConversionReport() {
   const [selectedProjectId, setSelectedProjectId] = useState('All');
 
   const filteredQuotes = quotes.filter(q => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    const fromDate = new Date(from + 'T00:00:00.000');
+    const toDate = new Date(to + 'T23:59:59.999');
     const interval = { start: fromDate, end: toDate };
     const inDateRange = isWithinInterval(new Date(q.date), interval);
     const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;
@@ -33,13 +34,12 @@ export default function QuoteConversionReport() {
   const converted = approved + invoiced;
   const conversionRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0';
 
-  const stages = [
-    { label: 'Draft', count: draft, color: 'bg-slate-200', textColor: 'text-slate-700' },
-    { label: 'Sent', count: sent, color: 'bg-blue-400', textColor: 'text-blue-700' },
-    { label: 'Approved', count: approved, color: 'bg-green-400', textColor: 'text-green-700' },
-    { label: 'Invoiced', count: invoiced, color: 'bg-emerald-500', textColor: 'text-emerald-700' },
-    { label: 'Rejected', count: rejected, color: 'bg-red-400', textColor: 'text-red-700' },
-  ];
+  const funnelData = [
+    { name: 'Draft', value: draft, fill: '#94a3b8' },
+    { name: 'Sent', value: sent, fill: '#60a5fa' },
+    { name: 'Approved', value: approved, fill: '#4ade80' },
+    { name: 'Invoiced', value: invoiced, fill: '#10b981' }
+  ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -65,8 +65,37 @@ export default function QuoteConversionReport() {
       {/* Funnel Visualization */}
       <Card><CardContent className="p-6">
         <h3 className="font-bold text-slate-900 mb-6">Pipeline Funnel</h3>
-        <div className="space-y-4">
-          {stages.map(s => {
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <FunnelChart>
+                <RechartsTooltip 
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    padding: '12px'
+                  }}
+                />
+                <Funnel
+                  data={funnelData}
+                  dataKey="value"
+                >
+                  <LabelList position="right" fill="#64748b" stroke="none" dataKey="name" fontSize={12} fontWeight={600} />
+                </Funnel>
+              </FunnelChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              { label: 'Draft', count: draft, color: 'bg-slate-200' },
+              { label: 'Sent', count: sent, color: 'bg-blue-400' },
+              { label: 'Approved', count: approved, color: 'bg-green-400' },
+              { label: 'Invoiced', count: invoiced, color: 'bg-emerald-500' },
+              { label: 'Rejected', count: rejected, color: 'bg-red-400' },
+            ].map(s => {
             const pct = total > 0 ? (s.count / total) * 100 : 0;
             return (
               <div key={s.label}>
@@ -80,6 +109,7 @@ export default function QuoteConversionReport() {
               </div>
             );
           })}
+          </div>
         </div>
       </CardContent></Card>
     </div>

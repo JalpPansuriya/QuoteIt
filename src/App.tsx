@@ -9,6 +9,8 @@ import { Catalog } from './pages/Catalog';
 import Settings from './pages/Settings';
 import PrintQuote from './pages/PrintQuote';
 import { Login } from './pages/Login';
+import { NotificationCenter } from './pages/NotificationCenter';
+import { ClientDetails } from './pages/ClientDetails';
 import ProjectList from './pages/projects/ProjectList';
 import ProjectForm from './pages/projects/ProjectForm';
 import ProjectDetail from './pages/projects/ProjectDetail';
@@ -94,8 +96,10 @@ export default function App() {
           <Route path="/quotes/new" element={<QuoteBuilder />} />
           <Route path="/quotes/:id" element={<QuoteBuilder />} />
           <Route path="/clients" element={<ProtectedRoute requiredRole="admin"><Clients /></ProtectedRoute>} />
+          <Route path="/clients/:id" element={<ProtectedRoute requiredRole="admin"><ClientDetails /></ProtectedRoute>} />
           <Route path="/catalog" element={<ProtectedRoute requiredRole="admin"><Catalog /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>} />
+          <Route path="/notifications" element={<NotificationCenter />} />
 
           {/* Projects */}
           <Route path="/projects" element={<ProjectList />} />

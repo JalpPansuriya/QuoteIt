@@ -16,8 +16,8 @@ export function ProductionTracker() {
   // Extract all line items across all quotes
   const allItems = quotes
     .filter(q => {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
+      const fromDate = new Date(from + 'T00:00:00.000');
+      const toDate = new Date(to + 'T23:59:59.999');
       const interval = { start: fromDate, end: toDate };
       const inDateRange = isWithinInterval(new Date(q.date), interval);
       const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;

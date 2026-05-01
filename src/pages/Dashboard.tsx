@@ -5,8 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { FileText, Plus, TrendingUp, Users, Box, Edit2, ExternalLink, Receipt, CreditCard, AlertTriangle, Package, Briefcase } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { format, isWithinInterval } from 'date-fns';
+import { format, isWithinInterval, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { FilterBar } from '../components/FilterBar';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend,
+  Cell
+} from 'recharts';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -16,8 +27,8 @@ export function Dashboard() {
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
   const [selectedProjectId, setSelectedProjectId] = useState('All');
 
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
+  const fromDate = new Date(from + 'T00:00:00.000');
+  const toDate = new Date(to + 'T23:59:59.999');
   const interval = { start: fromDate, end: toDate };
 
   const filteredQuotes = quotes.filter(q => {
@@ -66,6 +77,35 @@ export function Dashboard() {
   }).length;
   
   const lowStockItems = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold).length;
+
+  // Aggregate monthly data for the chart
+  const months = eachMonthOfInterval({ start: fromDate, end: toDate });
+  const chartData = months.map(month => {
+    const start = startOfMonth(month).getTime();
+    const end = endOfMonth(month).getTime();
+    
+    const revenue = invoices
+      .filter(inv => {
+        const d = new Date(inv.issueDate).getTime();
+        const inProject = selectedProjectId === 'All' || inv.projectId === selectedProjectId;
+        return d >= start && d <= end && inProject;
+      })
+      .reduce((s, inv) => s + inv.total, 0);
+      
+    const collected = payments
+      .filter(p => {
+        const d = new Date(p.paymentDate).getTime();
+        const inProject = selectedProjectId === 'All' || p.projectId === selectedProjectId;
+        return d >= start && d <= end && inProject;
+      })
+      .reduce((s, p) => s + p.amount, 0);
+      
+    return {
+      name: format(month, 'MMM yy'),
+      revenue,
+      collected
+    };
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -167,6 +207,64 @@ export function Dashboard() {
           </>
         )}
       </div>
+
+      {role === 'admin' && (
+        <Card className="p-6">
+          <CardHeader className="px-0 pt-0">
+            <CardTitle className="text-lg font-bold text-slate-900">Revenue vs Collections Trend</CardTitle>
+          </CardHeader>
+          <div className="h-[300px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                  tickFormatter={(value) => `₹${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                    padding: '12px'
+                  }}
+                  formatter={(value: number) => [formatCurrency(value), '']}
+                />
+                <Legend 
+                  verticalAlign="top" 
+                  align="right" 
+                  iconType="circle"
+                  wrapperStyle={{ paddingBottom: '20px', fontSize: '12px', fontWeight: 600, color: '#475569' }}
+                />
+                <Bar 
+                  name="Invoiced" 
+                  dataKey="revenue" 
+                  fill="#3b82f6" 
+                  radius={[4, 4, 0, 0]} 
+                  barSize={32}
+                />
+                <Bar 
+                  name="Collected" 
+                  dataKey="collected" 
+                  fill="#10b981" 
+                  radius={[4, 4, 0, 0]} 
+                  barSize={32}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         <div>

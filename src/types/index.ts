@@ -267,3 +267,12 @@ export interface ProjectProgress {
   recordedAt: number;
   createdAt: number;
 }
+
+export interface Notification {
+  id: string;
+  type: 'warning' | 'info' | 'success' | 'error';
+  message: string;
+  timestamp: number;
+  read: boolean;
+  link?: string;
+}

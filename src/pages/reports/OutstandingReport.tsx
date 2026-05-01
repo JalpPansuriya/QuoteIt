@@ -1,17 +1,31 @@
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useStore } from '../../store/useStore';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function OutstandingReport() {
   const navigate = useNavigate();
   const { invoices, clients } = useStore();
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
   const outstanding = invoices
-    .filter(i => i.balanceDue > 0 && i.status !== 'Draft')
+    .filter(i => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+      const inDateRange = isWithinInterval(new Date(i.issueDate), interval);
+      const inProject = selectedProjectId === 'All' || i.projectId === selectedProjectId;
+      const isOutstanding = i.balanceDue > 0 && i.status !== 'Draft';
+      return inDateRange && inProject && isOutstanding;
+    })
     .sort((a, b) => a.dueDate - b.dueDate);
 
   const totalOutstanding = outstanding.reduce((s, i) => s + i.balanceDue, 0);
@@ -49,6 +63,14 @@ export default function OutstandingReport() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/reports')}><ArrowLeft className="w-4 h-4" /></Button>
         <div><h1 className="text-3xl font-black tracking-tighter text-slate-900">Outstanding Balances</h1><p className="text-slate-500 mt-1">Unpaid invoices with aging buckets.</p></div>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <Card><CardContent className="p-5"><p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Outstanding</p><p className="text-3xl font-black mt-1 text-red-600">{formatCurrency(totalOutstanding)}</p></CardContent></Card>
 

@@ -4,17 +4,37 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Plus, Trash2, Edit2, Tag } from 'lucide-react';
+import { Plus, Trash2, Edit2, Tag, Search } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Material, Unit } from '../types';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../components/FilterBar';
 
 export function Catalog() {
   const { products, addProduct, updateProduct, deleteProduct, settings } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+  const [search, setSearch] = useState('');
+
+  const filteredProducts = products.filter(p => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+    
+    const inDateRange = isWithinInterval(new Date(p.createdAt || 0), interval);
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                         (p.material.toLowerCase().includes(search.toLowerCase())) ||
+                         (p.series?.toLowerCase() || '').includes(search.toLowerCase());
+                         
+    return inDateRange && matchesSearch;
+  });
   
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -167,6 +187,26 @@ export function Catalog() {
             </Button>
           </div>
         )}
+      </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+        showProject={false}
+      />
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search product catalog by name, material or series..."
+          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm font-medium"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       {isAdding && (
@@ -375,14 +415,14 @@ export function Catalog() {
                 </tr>
              </thead>
              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                {products.length === 0 ? (
+                {filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                        No products in catalog. Add your first window framework.
                     </td>
                   </tr>
                 ) : (
-                  products.map(product => (
+                  filteredProducts.map(product => (
                     <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-900">
                         {product.name}

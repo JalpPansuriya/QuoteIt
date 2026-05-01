@@ -6,18 +6,27 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Package, Plus, Search, AlertTriangle, Edit2, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { isWithinInterval } from 'date-fns';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function InventoryList() {
   const { inventoryItems, deleteInventoryItem } = useStore();
   const [search, setSearch] = useState('');
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+
   const filtered = inventoryItems
-    .filter(i =>
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.sku.toLowerCase().includes(search.toLowerCase())
-    )
+    .filter(i => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+      const matchesSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.sku.toLowerCase().includes(search.toLowerCase());
+      const inDateRange = isWithinInterval(new Date(i.createdAt), interval);
+      return matchesSearch && inDateRange;
+    })
     .sort((a, b) => b.createdAt - a.createdAt);
 
   const lowStockCount = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold).length;
@@ -36,6 +45,15 @@ export default function InventoryList() {
           </Button>
         </Link>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId=""
+        onProjectChange={() => {}}
+        showProject={false}
+      />
 
       {lowStockCount > 0 && (
         <Card className="p-4 border-amber-200 bg-amber-50">

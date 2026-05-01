@@ -1,24 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { Package, CheckCircle2, Hammer, Truck, MapPin } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../components/FilterBar';
 
 export function ProductionTracker() {
   const { quotes, clients, updateQuote } = useStore();
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
 
   // Extract all line items across all quotes
-  const allItems = quotes.flatMap(quote => {
-    const client = clients.find(c => c.id === quote.clientId);
-    return (quote.items || []).map(item => ({
-      ...item,
-      quoteNumber: quote.quoteNumber,
-      quoteId: quote.id,
-      clientName: client?.name || 'Unknown Client',
-      fullQuote: quote
-    }));
-  });
+  const allItems = quotes
+    .filter(q => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+      const inDateRange = isWithinInterval(new Date(q.date), interval);
+      const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;
+      return inDateRange && inProject;
+    })
+    .flatMap(quote => {
+      const client = clients.find(c => c.id === quote.clientId);
+      return (quote.items || []).map(item => ({
+        ...item,
+        quoteNumber: quote.quoteNumber,
+        quoteId: quote.id,
+        clientName: client?.name || 'Unknown Client',
+        fullQuote: quote
+      }));
+    });
 
   // Calculate aggregates
   const statusCounts = {
@@ -61,6 +75,14 @@ export function ProductionTracker() {
         <h1 className="text-3xl font-black tracking-tighter text-slate-900">Production Tracker</h1>
         <p className="text-slate-500 mt-1">Monitor the manufacturing and delivery stages of all client items.</p>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       {/* Aggregate Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

@@ -6,9 +6,10 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Plus, Search, FileText, Trash2, Edit2, Eye } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
 import type { InvoiceStatus } from '../../types';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { FilterBar } from '../../components/FilterBar';
 
 const STATUS_TABS: { label: string; value: InvoiceStatus | 'All' }[] = [
   { label: 'All', value: 'All' },
@@ -25,12 +26,23 @@ export default function InvoiceList() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
   const filtered = invoices
     .filter(inv => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+
       const clientName = clients.find(c => c.id === inv.clientId)?.name.toLowerCase() || '';
       const matchesSearch = inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) || clientName.includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'All' || inv.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const inDateRange = isWithinInterval(new Date(inv.issueDate), interval);
+      const inProject = selectedProjectId === 'All' || inv.projectId === selectedProjectId;
+
+      return matchesSearch && matchesStatus && inDateRange && inProject;
     })
     .sort((a, b) => b.createdAt - a.createdAt);
 
@@ -58,6 +70,14 @@ export default function InvoiceList() {
           </Button>
         </Link>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       {/* Status Tabs */}
       <div className="flex flex-wrap gap-2">

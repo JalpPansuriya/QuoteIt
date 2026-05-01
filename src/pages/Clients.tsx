@@ -3,16 +3,43 @@ import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Plus, Trash2, Edit2, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit2, Phone, Mail, MapPin, Search } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../components/FilterBar';
 
 export function Clients() {
-  const { clients, addClient, updateClient, deleteClient } = useStore();
+  const { clients, addClient, updateClient, deleteClient, projects } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+  const [search, setSearch] = useState('');
+
+  const filteredClients = clients.filter(c => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+
+    const inDateRange = isWithinInterval(new Date(c.createdAt || 0), interval);
+
+    let inProject = selectedProjectId === 'All';
+    if (!inProject) {
+      const project = projects.find(p => p.id === selectedProjectId);
+      inProject = project?.clientId === c.id;
+    }
+
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
+                         (c.email?.toLowerCase() || '').includes(search.toLowerCase()) ||
+                         (c.phone || '').includes(search);
+
+    return inDateRange && inProject && matchesSearch;
+  });
 
   const resetForm = () => {
     setFormData({ name: '', phone: '', email: '', address: '' });
@@ -51,6 +78,25 @@ export function Clients() {
         )}
       </div>
 
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search clients by name, email or phone..."
+          className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm font-medium"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       {isAdding && (
         <Card className="border-blue-600 shadow-xl border-t-4">
           <CardContent className="p-6">
@@ -70,7 +116,7 @@ export function Clients() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clients.map(client => (
+        {filteredClients.map(client => (
           <Card key={client.id} className="hover:border-blue-200 transition-colors shadow-lg shadow-slate-200/50">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">

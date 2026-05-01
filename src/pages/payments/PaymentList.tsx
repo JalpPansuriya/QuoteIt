@@ -6,22 +6,36 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Search, CreditCard, Eye } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function PaymentList() {
   const { payments, invoices, clients } = useStore();
   const [search, setSearch] = useState('');
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
   const filtered = payments
     .filter(p => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+
       const inv = invoices.find(i => i.id === p.invoiceId);
       const client = clients.find(c => c.id === p.clientId);
       const q = search.toLowerCase();
-      return (
+      const matchesSearch = (
         (inv?.invoiceNumber?.toLowerCase() || '').includes(q) ||
         (client?.name?.toLowerCase() || '').includes(q) ||
         p.paymentMethod.toLowerCase().includes(q)
       );
+
+      const inDateRange = isWithinInterval(new Date(p.paymentDate), interval);
+      const inProject = selectedProjectId === 'All' || p.projectId === selectedProjectId;
+
+      return matchesSearch && inDateRange && inProject;
     })
     .sort((a, b) => b.createdAt - a.createdAt);
 
@@ -39,6 +53,14 @@ export default function PaymentList() {
           <p className="text-2xl font-black text-green-700">{formatCurrency(totalCollected)}</p>
         </div>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <Card className="p-4 flex flex-col sm:flex-row gap-4 items-center justify-between bg-white">
         <div className="relative w-full max-w-md">

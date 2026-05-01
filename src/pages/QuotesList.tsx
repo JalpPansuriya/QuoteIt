@@ -6,9 +6,10 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Plus, Search, MoreHorizontal, FileText, Trash2, Copy, Edit2, ExternalLink } from 'lucide-react';
 import { formatCurrency, generateQuoteNumber } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { FilterBar } from '../components/FilterBar';
 
 export function QuotesList() {
   const { quotes, clients, deleteQuote, addQuote, updateQuote } = useStore();
@@ -16,10 +17,22 @@ export function QuotesList() {
   const [search, setSearch] = useState('');
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
   const filteredQuotes = quotes.filter(q => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+
     const clientName = clients.find(c => c.id === q.clientId)?.name.toLowerCase() || '';
-    return q.quoteNumber.toLowerCase().includes(search.toLowerCase()) || 
-           clientName.includes(search.toLowerCase());
+    const matchesSearch = q.quoteNumber.toLowerCase().includes(search.toLowerCase()) || 
+                         clientName.includes(search.toLowerCase());
+    const inDateRange = isWithinInterval(new Date(q.date), interval);
+    const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;
+
+    return matchesSearch && inDateRange && inProject;
   }).sort((a, b) => b.createdAt - a.createdAt);
 
   const handleDuplicate = (quote: any) => {
@@ -60,6 +73,14 @@ export function QuotesList() {
           </Button>
         </Link>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <Card className="p-4 flex flex-col sm:flex-row gap-4 items-center justify-between bg-white">
          <div className="relative w-full max-w-md">

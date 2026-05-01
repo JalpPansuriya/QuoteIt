@@ -1,19 +1,35 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from '../../store/useStore';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function QuoteConversionReport() {
   const navigate = useNavigate();
   const { quotes } = useStore();
 
-  const total = quotes.length;
-  const draft = quotes.filter(q => q.status === 'Draft').length;
-  const sent = quotes.filter(q => q.status === 'Sent').length;
-  const approved = quotes.filter(q => q.status === 'Approved').length;
-  const invoiced = quotes.filter(q => q.status === 'Invoiced').length;
-  const rejected = quotes.filter(q => q.status === 'Rejected').length;
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
+  const filteredQuotes = quotes.filter(q => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+    const inDateRange = isWithinInterval(new Date(q.date), interval);
+    const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+
+  const total = filteredQuotes.length;
+  const draft = filteredQuotes.filter(q => q.status === 'Draft').length;
+  const sent = filteredQuotes.filter(q => q.status === 'Sent').length;
+  const approved = filteredQuotes.filter(q => q.status === 'Approved').length;
+  const invoiced = filteredQuotes.filter(q => q.status === 'Invoiced').length;
+  const rejected = filteredQuotes.filter(q => q.status === 'Rejected').length;
   const converted = approved + invoiced;
   const conversionRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0';
 
@@ -31,6 +47,14 @@ export default function QuoteConversionReport() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/reports')}><ArrowLeft className="w-4 h-4" /></Button>
         <div><h1 className="text-3xl font-black tracking-tighter text-slate-900">Quote Conversion</h1><p className="text-slate-500 mt-1">Funnel analysis of your quotation pipeline.</p></div>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardContent className="p-5"><p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Quotes</p><p className="text-3xl font-black mt-1">{total}</p></CardContent></Card>

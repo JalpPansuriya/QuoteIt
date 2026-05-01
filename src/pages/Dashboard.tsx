@@ -1,28 +1,70 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useStore } from '../store/useStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FileText, Plus, TrendingUp, Users, Box, Edit2, ExternalLink, Receipt, CreditCard, AlertTriangle, Package, Briefcase } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
+import { FilterBar } from '../components/FilterBar';
 
 export function Dashboard() {
   const navigate = useNavigate();
   const { quotes, clients, products, invoices, payments, inventoryItems, projects, projectProgress, role, updateQuote } = useStore();
 
-  const totalRevenue = quotes
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 6); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  const interval = { start: fromDate, end: toDate };
+
+  const filteredQuotes = quotes.filter(q => {
+    const inDateRange = isWithinInterval(new Date(q.date), interval);
+    const inProject = selectedProjectId === 'All' || q.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+
+  const filteredInvoices = invoices.filter(i => {
+    const inDateRange = isWithinInterval(new Date(i.issueDate), interval);
+    const inProject = selectedProjectId === 'All' || i.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+
+  const filteredPayments = payments.filter(p => {
+    const inDateRange = isWithinInterval(new Date(p.paymentDate), interval);
+    const inProject = selectedProjectId === 'All' || p.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+
+  const filteredProgress = projectProgress.filter(p => {
+    const inDateRange = isWithinInterval(new Date(p.recordedAt), interval);
+    const inProject = selectedProjectId === 'All' || p.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+
+  const totalRevenue = filteredQuotes
     .filter(q => q.status === 'Approved' || q.status === 'Invoiced')
     .reduce((sum, q) => sum + q.grandTotal, 0);
 
-  const pendingQuotes = quotes.filter(q => q.status === 'Sent' || q.status === 'Draft').length;
-  const totalInvoiced = invoices
+  const pendingQuotes = filteredQuotes.filter(q => q.status === 'Sent' || q.status === 'Draft').length;
+  
+  const totalInvoiced = filteredInvoices
     .filter(i => i.invoiceType !== 'Final')
     .reduce((sum, i) => sum + i.total, 0);
-  const outstandingBalance = invoices
+    
+  const outstandingBalance = filteredInvoices
     .filter(i => i.invoiceType !== 'Final')
     .reduce((sum, i) => sum + i.balanceDue, 0);
-  const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
-  const activeProjects = projects.filter(p => p.status === 'Active').length;
+    
+  const totalCollected = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+  
+  const activeProjects = projects.filter(p => {
+    const inProject = selectedProjectId === 'All' || p.id === selectedProjectId;
+    return p.status === 'Active' && inProject;
+  }).length;
+  
   const lowStockItems = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold).length;
 
   return (
@@ -49,6 +91,14 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {role === 'admin' && (
@@ -104,7 +154,7 @@ export function Dashboard() {
                 <div>
                   <p className="text-[10px] uppercase font-bold tracking-widest text-amber-600">Pending Production</p>
                   <h3 className="text-2xl font-black text-slate-900 mt-1">
-                    {quotes.reduce((acc, q) => acc + (q.items?.filter(i => i.productionStatus === 'pending' || i.productionStatus === 'manufacturing').length || 0), 0)} Items
+                    {filteredQuotes.reduce((acc, q) => acc + (q.items?.filter(i => i.productionStatus === 'pending' || i.productionStatus === 'manufacturing').length || 0), 0)} Items
                   </h3>
                 </div>
                 <div className="p-3 bg-amber-100 rounded text-amber-600 border border-amber-200">
@@ -132,10 +182,10 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                  {projectProgress.length === 0 ? (
+                  {filteredProgress.length === 0 ? (
                     <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No progress recorded yet.</td></tr>
                   ) : (
-                    [...projectProgress].sort((a, b) => b.recordedAt - a.recordedAt).slice(0, 5).map(log => {
+                    [...filteredProgress].sort((a, b) => b.recordedAt - a.recordedAt).slice(0, 5).map(log => {
                       const project = projects.find(p => p.id === log.projectId);
                       return (
                         <tr key={log.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => navigate(`/projects/${log.projectId}`)}>
@@ -202,14 +252,14 @@ export function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-              {quotes.length === 0 ? (
+              {filteredQuotes.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                    No quotes yet. Create your first quote.
+                    No quotes found for selected criteria.
                   </td>
                 </tr>
               ) : (
-                [...quotes].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map((q) => {
+                [...filteredQuotes].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5).map((q) => {
                   const client = clients.find(c => c.id === q.clientId);
                   return (
                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">

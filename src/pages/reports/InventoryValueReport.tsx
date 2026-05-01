@@ -1,18 +1,29 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useStore } from '../../store/useStore';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft, Package } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function InventoryValueReport() {
   const navigate = useNavigate();
-  const { inventoryItems } = useStore();
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
 
-  const totalValue = inventoryItems.reduce((s, i) => s + i.costPrice * i.quantityOnHand, 0);
-  const lowStockItems = inventoryItems.filter(i => i.quantityOnHand <= i.reorderThreshold);
+  const filteredItems = inventoryItems.filter(i => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+    return isWithinInterval(new Date(i.createdAt), interval);
+  });
 
-  const sorted = [...inventoryItems].sort((a, b) => (b.costPrice * b.quantityOnHand) - (a.costPrice * a.quantityOnHand));
+  const totalValue = filteredItems.reduce((s, i) => s + i.costPrice * i.quantityOnHand, 0);
+  const lowStockItems = filteredItems.filter(i => i.quantityOnHand <= i.reorderThreshold);
+
+  const sorted = [...filteredItems].sort((a, b) => (b.costPrice * b.quantityOnHand) - (a.costPrice * a.quantityOnHand));
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -23,6 +34,15 @@ export default function InventoryValueReport() {
           <p className="text-slate-500 mt-1">Current stock value by cost price.</p>
         </div>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId=""
+        onProjectChange={() => {}}
+        showProject={false}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardContent className="p-5"><p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Stock Value</p><p className="text-2xl font-black mt-1 text-purple-700">{formatCurrency(totalValue)}</p></CardContent></Card>

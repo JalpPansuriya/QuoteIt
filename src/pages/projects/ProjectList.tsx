@@ -5,6 +5,8 @@ import { useStore } from '../../store/useStore';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../lib/utils';
 import { ProjectStatus } from '../../types';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function ProjectList() {
   const navigate = useNavigate();
@@ -13,11 +15,22 @@ export default function ProjectList() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All');
 
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
   const filteredProjects = projects.filter(p => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const interval = { start: fromDate, end: toDate };
+
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         p.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const inDateRange = isWithinInterval(new Date(p.createdAt), interval);
+    const inProject = selectedProjectId === 'All' || p.id === selectedProjectId;
+
+    return matchesSearch && matchesStatus && inDateRange && inProject;
   });
 
   const getStatusColor = (status: ProjectStatus) => {
@@ -48,6 +61,14 @@ export default function ProjectList() {
           </Button>
         )}
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
         <div className="relative flex-1 w-full max-w-md">

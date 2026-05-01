@@ -1,12 +1,28 @@
+import { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { Card, CardContent } from '../../components/ui/Card';
 import { formatCurrency } from '../../lib/utils';
 import { Briefcase, TrendingUp, DollarSign, Clock, AlertCircle } from 'lucide-react';
+import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function ProjectProfitabilityReport() {
   const { projects, quotes, invoices, payments, clients } = useStore();
 
-  const projectStats = projects.map(project => {
+  const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 12); return d.toISOString().split('T')[0]; });
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
+
+  const projectStats = projects
+    .filter(p => {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const interval = { start: fromDate, end: toDate };
+      const inDateRange = isWithinInterval(new Date(p.createdAt), interval);
+      const inProject = selectedProjectId === 'All' || p.id === selectedProjectId;
+      return inDateRange && inProject;
+    })
+    .map(project => {
     const projectQuotes = quotes.filter(q => q.projectId === project.id && q.status === 'Approved');
     const projectInvoices = invoices.filter(i => i.projectId === project.id);
     const projectPayments = payments.filter(p => p.projectId === project.id);
@@ -47,6 +63,14 @@ export default function ProjectProfitabilityReport() {
           <p className="text-slate-500 mt-2 font-medium">Site-wise financial tracking and collection status.</p>
         </div>
       </div>
+
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-white border-b-4 border-b-blue-500">

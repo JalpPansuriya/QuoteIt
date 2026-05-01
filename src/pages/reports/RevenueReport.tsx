@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { ArrowLeft } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { isWithinInterval } from 'date-fns';
+import { FilterBar } from '../../components/FilterBar';
 
 export default function RevenueReport() {
   const navigate = useNavigate();
@@ -14,14 +15,24 @@ export default function RevenueReport() {
 
   const [from, setFrom] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]; });
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedProjectId, setSelectedProjectId] = useState('All');
 
   const fromDate = new Date(from);
   const toDate = new Date(to);
   const dateRangeInvalid = fromDate > toDate;
 
   const interval = { start: fromDate, end: toDate };
-  const filteredInv = dateRangeInvalid ? [] : invoices.filter(i => isWithinInterval(new Date(i.issueDate), interval));
-  const filteredPay = dateRangeInvalid ? [] : payments.filter(p => isWithinInterval(new Date(p.paymentDate), interval));
+  const filteredInv = dateRangeInvalid ? [] : invoices.filter(i => {
+    const inDateRange = isWithinInterval(new Date(i.issueDate), interval);
+    const inProject = selectedProjectId === 'All' || i.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
+  
+  const filteredPay = dateRangeInvalid ? [] : payments.filter(p => {
+    const inDateRange = isWithinInterval(new Date(p.paymentDate), interval);
+    const inProject = selectedProjectId === 'All' || p.projectId === selectedProjectId;
+    return inDateRange && inProject;
+  });
 
   const totalInvoiced = filteredInv.reduce((s, i) => s + i.total, 0);
   const totalCollected = filteredPay.reduce((s, p) => s + p.amount, 0);
@@ -49,10 +60,13 @@ export default function RevenueReport() {
         <div><h1 className="text-3xl font-black tracking-tighter text-slate-900">Revenue Summary</h1><p className="text-slate-500 mt-1">Invoiced vs collected in the selected period.</p></div>
       </div>
 
-      <Card className="p-4"><div className="flex flex-wrap gap-4 items-end">
-        <Input label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-      </div></Card>
+      <FilterBar 
+        fromDate={from}
+        toDate={to}
+        onDateChange={(f, t) => { setFrom(f); setTo(t); }}
+        projectId={selectedProjectId}
+        onProjectChange={setSelectedProjectId}
+      />
 
       {dateRangeInvalid && (
         <div className="p-4 rounded bg-red-50 border border-red-200 text-sm font-bold text-red-700">

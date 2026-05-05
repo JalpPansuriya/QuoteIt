@@ -43,7 +43,7 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
           height={boxHeight} 
           fill="none" 
           stroke="#1e293b" 
-          strokeWidth="3" 
+          strokeWidth={type === 'Fixed Glass' ? "2" : "3"} 
           strokeLinejoin="round"
         />
 
@@ -52,6 +52,7 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
           const x = paddingX + (i * panelWidth);
           const isLastPanel = i === sections - 1;
           const isRightHalf = i >= Math.ceil(sections / 2);
+          const isFixed = type === 'Fixed Glass';
           
           return (
             <React.Fragment key={i}>
@@ -66,8 +67,22 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
                 strokeWidth="1.5" 
               />
               
+              {/* Glass Glare */}
+              <path 
+                d={`M ${x + panelWidth - 10} ${paddingY + 10} L ${x + panelWidth - 5} ${paddingY + 5}`}
+                stroke="white"
+                strokeWidth="1"
+                strokeOpacity="0.6"
+              />
+              <path 
+                d={`M ${x + panelWidth - 15} ${paddingY + 15} L ${x + panelWidth - 5} ${paddingY + 5}`}
+                stroke="white"
+                strokeWidth="0.5"
+                strokeOpacity="0.4"
+              />
+              
               {/* Overlap Shade (on the sliding side) */}
-              {i > 0 && (
+              {i > 0 && !isFixed && (
                 <rect 
                   x={x} 
                   y={paddingY + 2.5} 
@@ -76,9 +91,9 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
                   fill="#b9eaf0" 
                 />
               )}
-
+ 
               {/* Handle */}
-              {(i === 0 || i === sections - 1) && (
+              {(i === 0 || i === sections - 1) && !isFixed && (
                 <rect 
                   x={i === 0 ? x + 6 : x + panelWidth - 10} 
                   y={paddingY + (boxHeight / 2) - 8} 
@@ -88,24 +103,26 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
                   fill="#94a3b8" 
                 />
               )}
-
+ 
               {/* Sliding Arrow */}
-              <g stroke="#94a3b8" strokeWidth="1" fill="none">
-                {isRightHalf ? (
-                   // Arrow pointing Left <-
-                   <>
-                     <line x1={x + 10} y1={paddingY + (boxHeight / 2)} x2={x + panelWidth - 10} y2={paddingY + (boxHeight / 2)} strokeOpacity="0.5" />
-                     <path d={`M ${x + 15} ${paddingY + (boxHeight / 2) - 3} L ${x + 10} ${paddingY + (boxHeight / 2)} L ${x + 15} ${paddingY + (boxHeight / 2) + 3}`} strokeOpacity="0.5" />
-                   </>
-                ) : (
-                   // Arrow pointing Right ->
-                   <>
-                     <line x1={x + 10} y1={paddingY + (boxHeight / 2)} x2={x + panelWidth - 10} y2={paddingY + (boxHeight / 2)} strokeOpacity="0.5" />
-                     <path d={`M ${x + panelWidth - 15} ${paddingY + (boxHeight / 2) - 3} L ${x + panelWidth - 10} ${paddingY + (boxHeight / 2)} L ${x + panelWidth - 15} ${paddingY + (boxHeight / 2) + 3}`} strokeOpacity="0.5" />
-                   </>
-                )}
-              </g>
-
+              {!isFixed && (
+                <g stroke="#94a3b8" strokeWidth="1" fill="none">
+                  {isRightHalf ? (
+                    // Arrow pointing Left <-
+                    <>
+                      <line x1={x + 10} y1={paddingY + (boxHeight / 2)} x2={x + panelWidth - 10} y2={paddingY + (boxHeight / 2)} strokeOpacity="0.5" />
+                      <path d={`M ${x + 15} ${paddingY + (boxHeight / 2) - 3} L ${x + 10} ${paddingY + (boxHeight / 2)} L ${x + 15} ${paddingY + (boxHeight / 2) + 3}`} strokeOpacity="0.5" />
+                    </>
+                  ) : (
+                    // Arrow pointing Right ->
+                    <>
+                      <line x1={x + 10} y1={paddingY + (boxHeight / 2)} x2={x + panelWidth - 10} y2={paddingY + (boxHeight / 2)} strokeOpacity="0.5" />
+                      <path d={`M ${x + panelWidth - 15} ${paddingY + (boxHeight / 2) - 3} L ${x + panelWidth - 10} ${paddingY + (boxHeight / 2)} L ${x + panelWidth - 15} ${paddingY + (boxHeight / 2) + 3}`} strokeOpacity="0.5" />
+                    </>
+                  )}
+                </g>
+              )}
+ 
               {/* Vertical Separator */}
               {!isLastPanel && (
                 <line 
@@ -114,7 +131,7 @@ export const WindowSchematic: React.FC<WindowSchematicProps> = ({
                   x2={x + panelWidth} 
                   y2={paddingY + boxHeight} 
                   stroke="#1e293b" 
-                  strokeWidth="2.5" 
+                  strokeWidth={isFixed ? "1.5" : "2.5"} 
                 />
               )}
             </React.Fragment>

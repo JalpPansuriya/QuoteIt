@@ -4,6 +4,17 @@ Format: [YYYY-MM-DD] | [vX.X.X] | [Type: Added/Fixed/Changed/Removed]
 
 ---
 
+## [1.6.0] — 2026-05-01
+
+### Added
+- **Production Deployment**: Successfully deployed the application to Vercel at [https://quoteit-app.vercel.app](https://quoteit-app.vercel.app).
+- **Vercel Configuration**: Added `vercel.json` for SPA routing and configured production environment variables.
+
+### Changed
+- **Project Configuration**: Renamed project to `quoteit` in `package.json` for better Vercel compatibility.
+
+---
+
 ## [1.5.0] — 2026-04-24
 
 ### Added

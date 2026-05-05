@@ -7,13 +7,14 @@ import { Select } from '../components/ui/Select';
 import { Plus, Trash2, Edit2, Tag, Search } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { Material, Unit } from '../types';
+import { Material, Unit, ProductCategory } from '../types';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { isWithinInterval } from 'date-fns';
 import { FilterBar } from '../components/FilterBar';
+import { Combobox } from '../components/ui/Combobox';
 
 export function Catalog() {
-  const { products, addProduct, updateProduct, deleteProduct, settings } = useStore();
+  const { products, addProduct, updateProduct, deleteProduct, settings, addPreset } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -31,7 +32,8 @@ export function Catalog() {
     const inDateRange = isWithinInterval(new Date(p.createdAt || 0), interval);
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                          (p.material.toLowerCase().includes(search.toLowerCase())) ||
-                         (p.series?.toLowerCase() || '').includes(search.toLowerCase());
+                         (p.series?.toLowerCase() || '').includes(search.toLowerCase()) ||
+                         (p.category?.toLowerCase() || '').includes(search.toLowerCase());
                          
     return inDateRange && matchesSearch;
   });
@@ -40,6 +42,7 @@ export function Catalog() {
     name: '', 
     material: (settings.materials[0]?.name || 'UPVC') as Material, 
     glassType: settings.glassTypes[0]?.name || '', 
+    category: 'Window' as ProductCategory,
     baseRate: 0,
     unit: 'sq ft' as Unit,
     series: '',
@@ -62,6 +65,7 @@ export function Catalog() {
     flyscreenSashRoller: '',
     defaultWidth: undefined as number | undefined,
     defaultHeight: undefined as number | undefined,
+    customSpecs: [] as { label: string; value: string }[],
   });
 
   const resetForm = () => {
@@ -69,6 +73,7 @@ export function Catalog() {
       name: '', 
       material: (settings.materials[0]?.name || 'UPVC') as Material, 
       glassType: settings.glassTypes[0]?.name || '', 
+      category: 'Window' as ProductCategory,
       baseRate: 0, 
       unit: 'sq ft',
       series: '',
@@ -91,6 +96,7 @@ export function Catalog() {
       flyscreenSashRoller: '',
       defaultWidth: undefined,
       defaultHeight: undefined,
+      customSpecs: [],
     });
     setIsAdding(false);
     setEditingId(null);
@@ -112,6 +118,7 @@ export function Catalog() {
       name: product.name, 
       material: product.material, 
       glassType: product.glassType, 
+      category: product.category || 'Window',
       baseRate: product.baseRate,
       unit: product.unit,
       series: product.series || '',
@@ -134,6 +141,7 @@ export function Catalog() {
       flyscreenSashRoller: product.flyscreenSashRoller || '',
       defaultWidth: product.defaultWidth,
       defaultHeight: product.defaultHeight,
+      customSpecs: product.customSpecs || [],
     });
     setEditingId(product.id);
     setIsAdding(true);
@@ -164,6 +172,7 @@ export function Catalog() {
                     glassType: '11.52mm ST-167 Clear Reflective Laminated',
                     baseRate: 0,
                     unit: 'sq ft',
+                    category: 'Window',
                     createdAt: Date.now()
                   });
                   
@@ -175,6 +184,7 @@ export function Catalog() {
                     glassType: '5mm Frosted Non Toughened',
                     baseRate: 0,
                     unit: 'sq ft',
+                    category: 'Window',
                     createdAt: Date.now() + 1
                   });
                 }
@@ -275,11 +285,22 @@ export function Catalog() {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <Input className="lg:col-span-2" label="Product Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} autoFocus />
-                  <Select label="Material" value={formData.material} onChange={e => setFormData({ ...formData, material: e.target.value as Material })}>
-                    {settings.materials.map(m => (
-                      <option key={m.id} value={m.name}>{m.name}</option>
-                    ))}
+                  <Select label="Category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as ProductCategory })}>
+                    <option value="Window">🪟 Window</option>
+                    <option value="Fixed Glass">🖼️ Fixed Glass</option>
+                    <option value="Door">🚪 Door</option>
+                    <option value="Other">📦 Other</option>
                   </Select>
+                  <Combobox 
+                    label="Material" 
+                    value={formData.material} 
+                    onChange={val => setFormData({ ...formData, material: val as Material })}
+                    onAddNew={val => {
+                      addPreset('materials', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, material: val as Material });
+                    }}
+                    options={settings.materials.map(m => m.name)}
+                  />
                   <div className="flex gap-2">
                     <Input type="number" label="Base Rate" value={formData.baseRate || ''} onChange={e => setFormData({ ...formData, baseRate: parseFloat(e.target.value) || 0 })} />
                     <Select label="Unit" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>
@@ -301,96 +322,267 @@ export function Catalog() {
                   <div className="w-4 h-px bg-slate-200" /> Series & Framing
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Select label="Series" value={formData.series} onChange={e => setFormData({ ...formData, series: e.target.value })}>
-                    <option value="">Select Series...</option>
-                    {settings.series.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </Select>
-                  <Select label="Glass Detail" value={formData.glass} onChange={e => setFormData({ ...formData, glass: e.target.value })}>
-                    <option value="">Select Glass...</option>
-                    {settings.glassTypes.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
-                  </Select>
-                  <Select label="Color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })}>
-                    <option value="">Select Color...</option>
-                    {settings.colors.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </Select>
-                  <Select label="Reinforcement" value={formData.reinforcement} onChange={e => setFormData({ ...formData, reinforcement: e.target.value })}>
-                    <option value="">Select Reinforcement...</option>
-                    {settings.reinforcements.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                  </Select>
-                  <Select label="Frame Joins" value={formData.frameJoins} onChange={e => setFormData({ ...formData, frameJoins: e.target.value })}>
-                    <option value="">Select Frame Join...</option>
-                    {settings.frameJoins.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                  </Select>
+                  <Combobox 
+                    label="Series" 
+                    value={formData.series} 
+                    onChange={val => setFormData({ ...formData, series: val })}
+                    onAddNew={val => {
+                      addPreset('series', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, series: val });
+                    }}
+                    options={settings.series.map(s => s.name)}
+                  />
+                  <Combobox 
+                    label="Glass Detail" 
+                    value={formData.glass} 
+                    onChange={val => setFormData({ ...formData, glass: val })}
+                    onAddNew={val => {
+                      addPreset('glassTypes', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, glass: val });
+                    }}
+                    options={settings.glassTypes.map(g => g.name)}
+                  />
+                  <Combobox 
+                    label="Color" 
+                    value={formData.color} 
+                    onChange={val => setFormData({ ...formData, color: val })}
+                    onAddNew={val => {
+                      addPreset('colors', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, color: val });
+                    }}
+                    options={settings.colors.map(c => c.name)}
+                  />
+                  <Combobox 
+                    label="Reinforcement" 
+                    value={formData.reinforcement} 
+                    onChange={val => setFormData({ ...formData, reinforcement: val })}
+                    onAddNew={val => {
+                      addPreset('reinforcements', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, reinforcement: val });
+                    }}
+                    options={settings.reinforcements.map(r => r.name)}
+                  />
+                  <Combobox 
+                    label="Frame Joins" 
+                    value={formData.frameJoins} 
+                    onChange={val => setFormData({ ...formData, frameJoins: val })}
+                    onAddNew={val => {
+                      addPreset('frameJoins', { id: uuidv4(), name: val });
+                      setFormData({ ...formData, frameJoins: val });
+                    }}
+                    options={settings.frameJoins.map(f => f.name)}
+                  />
                 </div>
-              </div>
-
-              {/* SECTION: Track & Sash */}
-              <div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
-                  <div className="w-4 h-px bg-slate-200" /> Track & Sash Components
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Select label="Track Specs" value={formData.track} onChange={e => setFormData({ ...formData, track: e.target.value })}>
-                    <option value="">Select Track...</option>
-                    {settings.tracks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                  </Select>
-                  <Select label="Track RI" value={formData.trackRI} onChange={e => setFormData({ ...formData, trackRI: e.target.value })}>
-                    <option value="">Select Track RI...</option>
-                    {settings.trackRIs.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                  </Select>
-                  <Select label="Sliding Sash" value={formData.slidingSash} onChange={e => setFormData({ ...formData, slidingSash: e.target.value })}>
-                    <option value="">Select Sash...</option>
-                    {settings.slidingSashes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </Select>
-                  <Select label="Sliding Sash RI" value={formData.slidingSashRI} onChange={e => setFormData({ ...formData, slidingSashRI: e.target.value })}>
-                    <option value="">Select Sash RI...</option>
-                    {settings.slidingSashRIs.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </Select>
-                  <Select label="Flyscreen Type" value={formData.flyscreen} onChange={e => setFormData({ ...formData, flyscreen: e.target.value })}>
-                    <option value="">Select Flyscreen...</option>
-                    {settings.flyscreens.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                  </Select>
-                  <Select label="Flyscreen Sash" value={formData.flyscreenSash} onChange={e => setFormData({ ...formData, flyscreenSash: e.target.value })}>
-                    <option value="">Select Flyscreen Sash...</option>
-                    {settings.flyscreenSashes.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                  </Select>
-                  <Select label="Sliding Sash Roller" value={formData.slidingSashRoller} onChange={e => setFormData({ ...formData, slidingSashRoller: e.target.value })}>
-                    <option value="">Select Roller...</option>
-                    {settings.slidingSashRollers.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                  </Select>
-                  <Select label="Flyscreen Sash Roller" value={formData.flyscreenSashRoller} onChange={e => setFormData({ ...formData, flyscreenSashRoller: e.target.value })}>
-                    <option value="">Select Flyscreen Roller...</option>
-                    {settings.flyscreenSashRollers.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                  </Select>
+                {/* SECTION: Track & Sash */}
+              {formData.category !== 'Fixed Glass' && (
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
+                    <div className="w-4 h-px bg-slate-200" /> Track & Sash Components
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Combobox 
+                      label="Track Specs" 
+                      value={formData.track} 
+                      onChange={val => setFormData({ ...formData, track: val })}
+                      onAddNew={val => {
+                        addPreset('tracks', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, track: val });
+                      }}
+                      options={settings.tracks.map(t => t.name)}
+                    />
+                    <Combobox 
+                      label="Track RI" 
+                      value={formData.trackRI} 
+                      onChange={val => setFormData({ ...formData, trackRI: val })}
+                      onAddNew={val => {
+                        addPreset('trackRIs', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, trackRI: val });
+                      }}
+                      options={settings.trackRIs.map(t => t.name)}
+                    />
+                    <Combobox 
+                      label="Sliding Sash" 
+                      value={formData.slidingSash} 
+                      onChange={val => setFormData({ ...formData, slidingSash: val })}
+                      onAddNew={val => {
+                        addPreset('slidingSashes', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, slidingSash: val });
+                      }}
+                      options={settings.slidingSashes.map(s => s.name)}
+                    />
+                    <Combobox 
+                      label="Sliding Sash RI" 
+                      value={formData.slidingSashRI} 
+                      onChange={val => setFormData({ ...formData, slidingSashRI: val })}
+                      onAddNew={val => {
+                        addPreset('slidingSashRIs', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, slidingSashRI: val });
+                      }}
+                      options={settings.slidingSashRIs.map(s => s.name)}
+                    />
+                    <Combobox 
+                      label="Flyscreen Type" 
+                      value={formData.flyscreen} 
+                      onChange={val => setFormData({ ...formData, flyscreen: val })}
+                      onAddNew={val => {
+                        addPreset('flyscreens', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, flyscreen: val });
+                      }}
+                      options={settings.flyscreens.map(f => f.name)}
+                    />
+                    <Combobox 
+                      label="Flyscreen Sash" 
+                      value={formData.flyscreenSash} 
+                      onChange={val => setFormData({ ...formData, flyscreenSash: val })}
+                      onAddNew={val => {
+                        addPreset('flyscreenSashes', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, flyscreenSash: val });
+                      }}
+                      options={settings.flyscreenSashes.map(f => f.name)}
+                    />
+                    <Combobox 
+                      label="Sliding Sash Roller" 
+                      value={formData.slidingSashRoller} 
+                      onChange={val => setFormData({ ...formData, slidingSashRoller: val })}
+                      onAddNew={val => {
+                        addPreset('slidingSashRollers', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, slidingSashRoller: val });
+                      }}
+                      options={settings.slidingSashRollers.map(r => r.name)}
+                    />
+                    <Combobox 
+                      label="Flyscreen Sash Roller" 
+                      value={formData.flyscreenSashRoller} 
+                      onChange={val => setFormData({ ...formData, flyscreenSashRoller: val })}
+                      onAddNew={val => {
+                        addPreset('flyscreenSashRollers', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, flyscreenSashRoller: val });
+                      }}
+                      options={settings.flyscreenSashRollers.map(r => r.name)}
+                    />
+                  </div>
                 </div>
+              )}
+                {/* SECTION: Hardware & Meshes */}
+              {formData.category !== 'Fixed Glass' && (
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
+                    <div className="w-4 h-px bg-slate-200" /> Hardware & Final Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <Combobox 
+                      label="Fly Mesh Type" 
+                      value={formData.flyMeshType} 
+                      onChange={val => setFormData({ ...formData, flyMeshType: val })}
+                      onAddNew={val => {
+                        addPreset('flyMeshTypes', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, flyMeshType: val });
+                      }}
+                      options={settings.flyMeshTypes.map(m => m.name)}
+                    />
+                    <Combobox 
+                      label="Guide Rail" 
+                      value={formData.guideRail} 
+                      onChange={val => setFormData({ ...formData, guideRail: val })}
+                      onAddNew={val => {
+                        addPreset('guideRails', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, guideRail: val });
+                      }}
+                      options={settings.guideRails.map(g => g.name)}
+                    />
+                    <Combobox 
+                      label="Handle" 
+                      value={formData.handle} 
+                      onChange={val => setFormData({ ...formData, handle: val })}
+                      onAddNew={val => {
+                        addPreset('handles', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, handle: val });
+                      }}
+                      options={settings.handles.map(h => h.name)}
+                    />
+                    <Combobox 
+                      label="Flyscreen Handle" 
+                      value={formData.flyscreenHandle} 
+                      onChange={val => setFormData({ ...formData, flyscreenHandle: val })}
+                      onAddNew={val => {
+                        addPreset('flyscreenHandles', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, flyscreenHandle: val });
+                      }}
+                      options={settings.flyscreenHandles.map(f => f.name)}
+                    />
+                    <Combobox 
+                      label="Interlock" 
+                      value={formData.interlock} 
+                      onChange={val => setFormData({ ...formData, interlock: val })}
+                      onAddNew={val => {
+                        addPreset('interlocks', { id: uuidv4(), name: val });
+                        setFormData({ ...formData, interlock: val });
+                      }}
+                      options={settings.interlocks.map(i => i.name)}
+                    />
+                  </div>
+                </div>
+              )}
               </div>
-
-              {/* SECTION: Hardware & Meshes */}
-              <div>
+              
+              {/* SECTION: Custom Specifications */}
+              <div className="mt-8 border-t border-slate-100 pt-8">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
-                  <div className="w-4 h-px bg-slate-200" /> Hardware & Final Details
+                  <div className="w-4 h-px bg-slate-200" /> Custom Specifications
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <Select label="Fly Mesh Type" value={formData.flyMeshType} onChange={e => setFormData({ ...formData, flyMeshType: e.target.value })}>
-                    <option value="">Select Mesh...</option>
-                    {settings.flyMeshTypes.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                  </Select>
-                  <Select label="Guide Rail" value={formData.guideRail} onChange={e => setFormData({ ...formData, guideRail: e.target.value })}>
-                    <option value="">Select Guide Rail...</option>
-                    {settings.guideRails.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
-                  </Select>
-                  <Select label="Handle" value={formData.handle} onChange={e => setFormData({ ...formData, handle: e.target.value })}>
-                    <option value="">Select Handle...</option>
-                    {settings.handles.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
-                  </Select>
-                  <Select label="Flyscreen Handle" value={formData.flyscreenHandle} onChange={e => setFormData({ ...formData, flyscreenHandle: e.target.value })}>
-                    <option value="">Select Fly Handle...</option>
-                    {settings.flyscreenHandles.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                  </Select>
-                  <Select label="Interlock" value={formData.interlock} onChange={e => setFormData({ ...formData, interlock: e.target.value })}>
-                    <option value="">Select Interlock...</option>
-                    {settings.interlocks.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
-                  </Select>
+                <div className="space-y-3">
+                  {formData.customSpecs.map((spec, idx) => (
+                    <div key={idx} className="flex gap-3 items-end group animate-in slide-in-from-left-2 duration-200">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Label</label>
+                        <Input 
+                          value={spec.label}
+                          onChange={(e) => {
+                            const newSpecs = [...formData.customSpecs];
+                            newSpecs[idx].label = e.target.value;
+                            setFormData({ ...formData, customSpecs: newSpecs });
+                          }}
+                          placeholder="e.g. Finish Type"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Value</label>
+                        <Input 
+                          value={spec.value}
+                          onChange={(e) => {
+                            const newSpecs = [...formData.customSpecs];
+                            newSpecs[idx].value = e.target.value;
+                            setFormData({ ...formData, customSpecs: newSpecs });
+                          }}
+                          placeholder="e.g. Matt Finish"
+                        />
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                        onClick={() => {
+                          const newSpecs = formData.customSpecs.filter((_, i) => i !== idx);
+                          setFormData({ ...formData, customSpecs: newSpecs });
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2 border-dashed border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 py-6 w-full rounded-xl"
+                    onClick={() => {
+                      setFormData({ 
+                        ...formData, 
+                        customSpecs: [...formData.customSpecs, { label: '', value: '' }] 
+                      });
+                    }}
+                  >
+                    <Plus className="w-4 h-4" /> Add Dynamic Specification
+                  </Button>
                 </div>
               </div>
             </div>
@@ -408,6 +600,7 @@ export function Catalog() {
              <thead className="border-b border-slate-200">
                 <tr className="text-[10px] uppercase font-bold tracking-widest text-slate-400 bg-slate-50">
                   <th className="px-6 py-4">Product Name</th>
+                  <th className="px-6 py-4">Category</th>
                   <th className="px-6 py-4">Material</th>
                   <th className="px-6 py-4">Glass Specs</th>
                   <th className="px-6 py-4">Base Rate / Unit</th>
@@ -426,6 +619,11 @@ export function Catalog() {
                     <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-900">
                         {product.name}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wider">
+                          {product.category || 'Window'}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold uppercase tracking-wider text-slate-600">

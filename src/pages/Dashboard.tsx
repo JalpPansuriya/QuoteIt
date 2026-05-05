@@ -187,23 +187,21 @@ export function Dashboard() {
               </CardContent>
             </Card>
 
-        {role === 'admin' && (
-          <Card className="border-amber-200 bg-amber-50/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] uppercase font-bold tracking-widest text-amber-600">Pending Production</p>
-                  <h3 className="text-2xl font-black text-slate-900 mt-1">
-                    {filteredQuotes.reduce((acc, q) => acc + (q.items?.filter(i => i.productionStatus === 'pending' || i.productionStatus === 'manufacturing').length || 0), 0)} Items
-                  </h3>
+            <Card className="border-amber-200 bg-amber-50/20">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-amber-600">Pending Production</p>
+                    <h3 className="text-2xl font-black text-slate-900 mt-1">
+                      {filteredQuotes.reduce((acc, q) => acc + (q.items?.filter(i => i.productionStatus === 'pending' || i.productionStatus === 'manufacturing').length || 0), 0)} Items
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-amber-100 rounded text-amber-600 border border-amber-200">
+                    <Package className="w-5 h-5" />
+                  </div>
                 </div>
-                <div className="p-3 bg-amber-100 rounded text-amber-600 border border-amber-200">
-                  <Package className="w-5 h-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>

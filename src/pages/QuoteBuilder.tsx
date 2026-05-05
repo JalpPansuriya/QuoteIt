@@ -17,7 +17,7 @@ export function QuoteBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { quotes, addQuote, updateQuote, clients, addClient, products, projects, settings, isLoading } = useStore();
+  const { quotes, addQuote, updateQuote, clients, addClient, products, projects, settings, isLoading, addPreset } = useStore();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [libLoaded, setLibLoaded] = useState(false);
   const [isAddingClient, setIsAddingClient] = useState(false);
@@ -137,13 +137,19 @@ export function QuoteBuilder() {
       discountAmount = quote.discountValue || 0;
     }
 
-    const afterDiscount = subtotal - discountAmount;
+    const afterDiscount = Math.max(0, subtotal - discountAmount);
     const gstAmount = quote.applyGst ? afterDiscount * ((quote.gstRate || 18) / 100) : 0;
     const grandTotal = afterDiscount + gstAmount;
 
     setQuote(prev => {
       // Prevent infinite loop if nothing actually changed deeply
-      if (prev.subtotal === subtotal && prev.grandTotal === grandTotal) return prev;
+      // Also handle NaN cases which could break the check
+      const hasChanged = 
+        Math.abs((prev.subtotal || 0) - subtotal) > 0.01 || 
+        Math.abs((prev.grandTotal || 0) - grandTotal) > 0.01 ||
+        prev.items?.length !== computedItems.length;
+
+      if (!hasChanged) return prev;
       return {
         ...prev,
         items: computedItems,
@@ -168,6 +174,7 @@ export function QuoteBuilder() {
       qty: undefined as any,
       rate: undefined as any,
       unit: 'unit',
+      category: 'Window',
       discount: 0,
       subtotal: 0,
       total: 0
@@ -188,6 +195,27 @@ export function QuoteBuilder() {
           name: product.name,
           rate: product.baseRate,
           unit: product.unit,
+          category: product.category,
+          series: product.series,
+          glass: product.glass || product.glassType,
+          color: product.color,
+          track: product.track,
+          trackRI: product.trackRI,
+          slidingSash: product.slidingSash,
+          slidingSashRI: product.slidingSashRI,
+          flyscreen: product.flyscreen,
+          flyscreenSash: product.flyscreenSash,
+          interlock: product.interlock,
+          flyMeshType: product.flyMeshType,
+          guideRail: product.guideRail,
+          handle: product.handle,
+          flyscreenHandle: product.flyscreenHandle,
+          slidingSashRoller: product.slidingSashRoller,
+          flyscreenSashRoller: product.flyscreenSashRoller,
+          displayMode: product.displayMode,
+          image: product.image,
+          customSpecs: product.customSpecs || [],
+          sections: product.category === 'Fixed Glass' ? 1 : 2,
         };
         if (newItems[index].qty === undefined) {
           newItems[index].qty = 1;
@@ -197,6 +225,11 @@ export function QuoteBuilder() {
       }
     } else {
       newItems[index] = { ...newItems[index], [field]: value };
+      
+      // Auto-set sections to 1 for Fixed Glass
+      if (field === 'category' && value === 'Fixed Glass') {
+        newItems[index].sections = 1;
+      }
     }
     
     updateField('items', newItems);
@@ -371,8 +404,8 @@ export function QuoteBuilder() {
           let logoW = 25;
           let logoH = 25;
           if (dims.w > 0 && dims.h > 0) {
-            const maxH = 20;
-            const maxW = 50;
+            const maxH = 15;
+            const maxW = 40;
             const ratio = dims.w / dims.h;
             logoH = maxH;
             logoW = logoH * ratio;
@@ -398,19 +431,19 @@ export function QuoteBuilder() {
       doc.setFontSize(28);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(50, 50, 50);
-      doc.text("Quotation", 105, yPos + 5, { align: "center" });
+      doc.text("Quotation", 105, yPos + 3, { align: "center" });
 
       // Right Side Info
       doc.setFontSize(11);
       doc.setTextColor(30, 41, 59);
-      doc.text(settings.features.companyName || "Prince Windows", 200, yPos + 2, { align: "right" });
+      doc.text(settings.features.companyName || "Prince Windows", 200, yPos + 1, { align: "right" });
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(150, 150, 150);
-      doc.text((settings.features.companyTagline || "WE MAKE WINDOWS"), 200, yPos + 7, { align: "right" });
+      doc.text((settings.features.companyTagline || "WE MAKE WINDOWS"), 200, yPos + 6, { align: "right" });
 
       // Divider
-      yPos += 15;
+      yPos += 18;
       doc.setDrawColor(220, 220, 220);
       doc.line(margin, yPos, 200, yPos);
 
@@ -436,7 +469,7 @@ export function QuoteBuilder() {
       // --- ITEMS TABLE ---
       yPos += 20;
       
-      const drawWindowSchematic = (doc: any, x: number, y: number, w: number, h: number, sections: number) => {
+      const drawWindowSchematic = (doc: any, x: number, y: number, w: number, h: number, sections: number, category?: string) => {
         const boxW = 35;
         const boxH = 25;
         const centerX = x + 20;
@@ -457,16 +490,18 @@ export function QuoteBuilder() {
           doc.rect(px + 0.5, centerY - (boxH/2) + 0.5, panelW - 1, boxH - 1, 'S');
           
           // Slider Arrow
-          doc.setDrawColor(148, 163, 184);
-          doc.setLineWidth(0.2);
-          const arrowY = centerY;
-          doc.line(px + 5, arrowY, px + panelW - 5, arrowY);
-          if (i >= Math.ceil(sections/2)) {
-            doc.line(px + 5, arrowY, px + 7, arrowY - 2);
-            doc.line(px + 5, arrowY, px + 7, arrowY + 2);
-          } else {
-            doc.line(px + panelW - 5, arrowY, px + panelW - 7, arrowY - 2);
-            doc.line(px + panelW - 5, arrowY, px + panelW - 7, arrowY + 2);
+          if (category !== 'Fixed Glass') {
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.2);
+            const arrowY = centerY;
+            doc.line(px + 5, arrowY, px + panelW - 5, arrowY);
+            if (i >= Math.ceil(sections/2)) {
+              doc.line(px + 5, arrowY, px + 7, arrowY - 2);
+              doc.line(px + 5, arrowY, px + 7, arrowY + 2);
+            } else {
+              doc.line(px + panelW - 5, arrowY, px + panelW - 7, arrowY - 2);
+              doc.line(px + panelW - 5, arrowY, px + panelW - 7, arrowY + 2);
+            }
           }
         }
 
@@ -552,7 +587,8 @@ export function QuoteBuilder() {
         doc.text((index + 1).toString(), margin + 75 - 4, yPos + 3.5);
 
         // Drawing schematic
-        drawWindowSchematic(doc, margin + 5, yPos + 5, item.width, item.height, item.sections || 2);
+        const isFixed = item.category === 'Fixed Glass' || item.name?.toLowerCase().includes('fixed');
+        drawWindowSchematic(doc, margin + 5, yPos + 5, item.width, item.height, item.sections || (isFixed ? 1 : 2), item.category);
         
         // Specs
         const specX = margin + 80;
@@ -563,7 +599,8 @@ export function QuoteBuilder() {
         doc.text(`P${index + 1}`, specX, specY);
         
         specY += 5;
-        doc.text(item.series || item.name || "Gaudani - 32MM SLIDING SERIES", specX, specY);
+        const materialPrefix = item.material ? `${item.material} - ` : "";
+        doc.text(`${materialPrefix}${item.series || item.name || "Gaudani Series"}`, specX, specY);
         
         specY += 5;
         doc.setFontSize(8);
@@ -572,9 +609,12 @@ export function QuoteBuilder() {
         doc.text("Desc:", specX, specY);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 41, 59);
-        doc.text(item.description || "2T/2P Sliding", specX + 10, specY);
         
-        if (item.tracks) {
+        const defaultDesc = isFixed ? "Fixed Outer Frame" : "2T/2P Sliding";
+        const descText = item.description || defaultDesc;
+        doc.text(descText, specX + 10, specY);
+        
+        if (item.tracks && !isFixed) {
           doc.setFont("helvetica", "normal");
           doc.setTextColor(100, 116, 139);
           doc.text("Tracks:", specX + 50, specY);
@@ -589,7 +629,7 @@ export function QuoteBuilder() {
         doc.text("Glass:", specX, specY);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(30, 41, 59);
-        doc.text(item.glass || "11.52mm ST-187 Clear", specX + 10, specY);
+        doc.text(item.glass || "5mm Clear Glass", specX + 10, specY);
 
         if (item.colorCoating) {
           doc.setFont("helvetica", "normal");
@@ -600,24 +640,47 @@ export function QuoteBuilder() {
           doc.text(item.colorCoating, specX + 60, specY);
         }
 
-        specY += 8;
-        doc.setDrawColor(120, 120, 120);
-        doc.rect(specX, specY - 4, 100, 6);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Rubber and brush: ${item.rubberColor || 'Black'}`, specX + 2, specY);
-        const rColor = (item.rubberColor || 'Black').toLowerCase();
-        if (rColor === 'white') {
-          doc.setFillColor(255, 255, 255);
-        } else if (rColor === 'grey' || rColor === 'gray') {
-          doc.setFillColor(150, 150, 150);
-        } else {
-          doc.setFillColor(0, 0, 0);
+        if (!isFixed) {
+          specY += 8;
+          doc.setDrawColor(120, 120, 120);
+          doc.rect(specX, specY - 4, 100, 6);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Rubber and brush: ${item.rubberColor || 'Black'}`, specX + 2, specY);
+          const rColor = (item.rubberColor || 'Black').toLowerCase();
+          if (rColor === 'white') {
+            doc.setFillColor(255, 255, 255);
+          } else if (rColor === 'grey' || rColor === 'gray') {
+            doc.setFillColor(150, 150, 150);
+          } else {
+            doc.setFillColor(0, 0, 0);
+          }
+          doc.rect(specX + 85, specY - 3, 12, 4, 'FD');
         }
-        doc.rect(specX + 85, specY - 3, 12, 4, 'FD');
 
-        specY += 8;
-        doc.setFont("helvetica", "bold");
-        doc.text(item.hardware?.toUpperCase() || "MULTI POINT LOCKING", specX, specY);
+        if (!isFixed || (item.hardware && item.hardware.toLowerCase().includes('lock'))) {
+          const hardwareText = item.hardware?.toUpperCase() || (isFixed ? "" : "MULTI POINT LOCKING");
+          if (hardwareText) {
+            specY += 8;
+            doc.setFont("helvetica", "bold");
+            doc.text(hardwareText, specX, specY);
+          }
+        }
+
+        // Custom Dynamic Specs
+        if (item.customSpecs && item.customSpecs.length > 0) {
+          item.customSpecs.forEach(spec => {
+            if (spec.label && spec.value) {
+              specY += 5;
+              doc.setFontSize(8);
+              doc.setFont("helvetica", "normal");
+              doc.setTextColor(100, 116, 139);
+              doc.text(`${spec.label}:`, specX, specY);
+              doc.setFont("helvetica", "bold");
+              doc.setTextColor(30, 41, 59);
+              doc.text(spec.value, specX + (doc.getTextWidth(`${spec.label}: `)), specY);
+            }
+          });
+        }
         
         if (item.panelCost) {
           doc.setFont("helvetica", "normal");
@@ -1335,12 +1398,12 @@ export function QuoteBuilder() {
       {editingItemIndex !== null && quote.items && quote.items[editingItemIndex] && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItemIndex(null)} />
-          <Card className="relative w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 border-none">
-            <CardHeader className="pb-2">
+          <Card className="relative w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border-none overflow-hidden">
+            <CardHeader className="pb-2 shrink-0 border-b border-slate-50">
               <CardTitle className="text-xl">Item Details & Specs</CardTitle>
               <p className="text-sm text-slate-500">Add detailed specifications and an image for {quote.items[editingItemIndex].name || 'this item'}.</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-y-auto flex-1 p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -1350,8 +1413,24 @@ export function QuoteBuilder() {
                       className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 min-h-[200px] bg-slate-50/30 font-mono"
                       value={quote.items[editingItemIndex].description || ''}
                       onChange={(e) => updateItem(editingItemIndex, 'description', e.target.value)}
-                      placeholder={`Glass: 5 mm Clear\nColor: White\nHandle: Sliding Touch Lock`}
+                      placeholder={quote.items[editingItemIndex].category === 'Fixed Glass' 
+                        ? `Glass: 5 mm Clear\nColor: White\nFrame: Fixed Outer` 
+                        : `Glass: 5 mm Clear\nColor: White\nHandle: Sliding Touch Lock`}
                     />
+
+                    <div className="pt-2">
+                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Product Category</label>
+                       <Select 
+                        className="mt-1 h-10"
+                        value={quote.items[editingItemIndex].category || 'Window'}
+                        onChange={(e) => updateItem(editingItemIndex, 'category', e.target.value)}
+                       >
+                         <option value="Window">🪟 Window</option>
+                         <option value="Fixed Glass">🖼️ Fixed Glass</option>
+                         <option value="Door">🚪 Door</option>
+                         <option value="Other">📦 Other</option>
+                       </Select>
+                    </div>
 
                     <div className="pt-2 grid grid-cols-2 gap-4">
                        <div>
@@ -1374,48 +1453,58 @@ export function QuoteBuilder() {
                        </div>
                     </div>
 
-                    <div className="pt-2 grid grid-cols-2 gap-4">
-                       <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Hardware/Locking</label>
-                          <Input 
-                            className="mt-1 h-10"
-                            value={quote.items[editingItemIndex].hardware || ''}
-                            onChange={(e) => updateItem(editingItemIndex, 'hardware', e.target.value)}
-                            placeholder="e.g. Multi Point"
-                          />
-                       </div>
-                       <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Rubber Color</label>
-                          <Input 
-                            className="mt-1 h-10"
-                            value={quote.items[editingItemIndex].rubberColor || ''}
-                            onChange={(e) => updateItem(editingItemIndex, 'rubberColor', e.target.value)}
-                            placeholder="e.g. Black"
-                          />
-                       </div>
-                    </div>
+                    {quote.items[editingItemIndex].category !== 'Fixed Glass' && (
+                      <div className="pt-2 grid grid-cols-2 gap-4">
+                        <Combobox 
+                          label="Hardware/Locking"
+                          value={quote.items[editingItemIndex].hardware || ''}
+                          onChange={(val) => updateItem(editingItemIndex, 'hardware', val)}
+                          onAddNew={(val) => {
+                            addPreset('hardware', { id: uuidv4(), name: val });
+                            updateItem(editingItemIndex, 'hardware', val);
+                          }}
+                          options={settings.hardware.map(h => h.name)}
+                          placeholder="e.g. Multi Point"
+                        />
+                        <Combobox 
+                          label="Rubber Color"
+                          value={quote.items[editingItemIndex].rubberColor || ''}
+                          onChange={(val) => updateItem(editingItemIndex, 'rubberColor', val)}
+                          onAddNew={(val) => {
+                            addPreset('rubberColors', { id: uuidv4(), name: val });
+                            updateItem(editingItemIndex, 'rubberColor', val);
+                          }}
+                          options={settings.rubberColors.map(r => r.name)}
+                          placeholder="e.g. Black"
+                        />
+                      </div>
+                    )}
 
                     <div className="pt-2 grid grid-cols-2 gap-4">
-                       <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Tracks</label>
+                      {quote.items[editingItemIndex].category !== 'Fixed Glass' && (
                           <Combobox
-                            className="mt-1"
+                            label="Tracks"
                             value={quote.items[editingItemIndex].tracks || ''}
                             onChange={(val) => updateItem(editingItemIndex, 'tracks', val)}
+                            onAddNew={(val) => {
+                              addPreset('tracks', { id: uuidv4(), name: val });
+                              updateItem(editingItemIndex, 'tracks', val);
+                            }}
                             placeholder="e.g. 2 Track"
-                            options={["1 Track", "2 Track", "2.5 Track", "3 Track"]}
+                            options={settings.tracks.map(t => t.name)}
                           />
-                       </div>
-                       <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Color Coating</label>
-                          <Combobox
-                            className="mt-1"
-                            value={quote.items[editingItemIndex].colorCoating || ''}
-                            onChange={(val) => updateItem(editingItemIndex, 'colorCoating', val)}
-                            placeholder="e.g. Powder Coated"
-                            options={["Powder Coated Black", "Powder Coated White", "Anodized Silver", "Anodized Bronze", "Wooden Finish"]}
-                          />
-                       </div>
+                        )}
+                        <Combobox
+                          label="Color Coating"
+                          value={quote.items[editingItemIndex].colorCoating || ''}
+                          onChange={(val) => updateItem(editingItemIndex, 'colorCoating', val)}
+                          onAddNew={(val) => {
+                            addPreset('colors', { id: uuidv4(), name: val });
+                            updateItem(editingItemIndex, 'colorCoating', val);
+                          }}
+                          placeholder="e.g. Powder Coated"
+                          options={settings.colors.map(c => c.name)}
+                        />
                     </div>
 
                     <div className="pt-2 grid grid-cols-2 gap-4">
@@ -1429,18 +1518,78 @@ export function QuoteBuilder() {
                             placeholder="e.g. 1500"
                           />
                        </div>
-                       <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Window Sections</label>
-                          <Select 
-                            className="mt-1 h-10"
-                            value={quote.items[editingItemIndex].sections || 2}
-                            onChange={(e) => updateItem(editingItemIndex, 'sections', parseInt(e.target.value))}
-                          >
-                            <option value={2}>2 Sections (Standard)</option>
-                            <option value={3}>3 Sections</option>
-                            <option value={4}>4 Sections</option>
-                          </Select>
-                       </div>
+                        <div>
+                           <label className="text-xs font-bold text-slate-400 uppercase ml-1">
+                             {quote.items[editingItemIndex].category === 'Fixed Glass' ? 'Glass Panes' : 'Window Sections'}
+                           </label>
+                           <Select 
+                             className="mt-1 h-10"
+                             value={quote.items[editingItemIndex].sections || (quote.items[editingItemIndex].category === 'Fixed Glass' ? 1 : 2)}
+                             onChange={(e) => updateItem(editingItemIndex, 'sections', parseInt(e.target.value))}
+                           >
+                             <option value={1}>1 Pane (Full)</option>
+                             <option value={2}>2 Panes (Split)</option>
+                             <option value={3}>3 Panes (Triple)</option>
+                             <option value={4}>4 Panes</option>
+                           </Select>
+                        </div>
+                    </div>
+                    
+                    {/* SECTION: Custom Specifications */}
+                    <div className="pt-4 border-t border-slate-100 mt-4">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-3">Custom Dynamic Specifications</label>
+                      <div className="space-y-3">
+                        {(quote.items[editingItemIndex].customSpecs || []).map((spec, idx) => (
+                          <div key={idx} className="flex gap-2 items-end animate-in slide-in-from-left-2 duration-200">
+                            <div className="flex-1 space-y-1">
+                              <Input 
+                                className="h-8 text-xs"
+                                value={spec.label}
+                                onChange={(e) => {
+                                  const newSpecs = [...(quote.items![editingItemIndex].customSpecs || [])];
+                                  newSpecs[idx].label = e.target.value;
+                                  updateItem(editingItemIndex, 'customSpecs', newSpecs);
+                                }}
+                                placeholder="Label"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <Input 
+                                className="h-8 text-xs"
+                                value={spec.value}
+                                onChange={(e) => {
+                                  const newSpecs = [...(quote.items![editingItemIndex].customSpecs || [])];
+                                  newSpecs[idx].value = e.target.value;
+                                  updateItem(editingItemIndex, 'customSpecs', newSpecs);
+                                }}
+                                placeholder="Value"
+                              />
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-red-400 hover:text-red-600 rounded-lg"
+                              onClick={() => {
+                                const newSpecs = quote.items![editingItemIndex].customSpecs?.filter((_, i) => i !== idx);
+                                updateItem(editingItemIndex, 'customSpecs', newSpecs);
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full py-1 h-8 text-[10px] border-dashed border-slate-200 text-slate-500 hover:text-blue-600 rounded-lg"
+                          onClick={() => {
+                            const newSpecs = [...(quote.items![editingItemIndex].customSpecs || []), { label: '', value: '' }];
+                            updateItem(editingItemIndex, 'customSpecs', newSpecs);
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Add Spec
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -1459,6 +1608,7 @@ export function QuoteBuilder() {
                              width={quote.items[editingItemIndex].width || 3} 
                              height={quote.items[editingItemIndex].height || 2} 
                              sections={quote.items[editingItemIndex].sections || 2}
+                             type={quote.items[editingItemIndex].category}
                            />
                            
                            <div className="relative">
@@ -1475,15 +1625,15 @@ export function QuoteBuilder() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4 border-t border-slate-100">
-                  <Button onClick={() => setEditingItemIndex(null)}>
-                    Done
-                  </Button>
                 </div>
               </div>
-            </CardContent>
+            </div>
+          </CardContent>
+            <div className="p-4 border-t border-slate-100 flex justify-end shrink-0 bg-slate-50/50">
+              <Button onClick={() => setEditingItemIndex(null)} className="px-8 shadow-md">
+                Done
+              </Button>
+            </div>
           </Card>
         </div>
       )}

@@ -117,6 +117,8 @@ const initialSettings: AppSettings = {
   flyscreenHandles: [],
   slidingSashRollers: [],
   flyscreenSashRollers: [],
+  hardware: [],
+  rubberColors: [],
   features: {
     defaultGstEnabled: true,
     defaultGstRate: 18,

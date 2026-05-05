@@ -1,3 +1,4 @@
+export type ProductCategory = 'Window' | 'Fixed Glass' | 'Door' | 'Other';
 export type Material = 'UPVC' | 'Aluminium' | 'Wood';
 export type Unit = 'sq ft' | 'unit' | 'running ft';
 export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Invoiced' | 'Rejected';
@@ -33,6 +34,8 @@ export interface AppSettings {
   flyscreenHandles: MetaDataValue[];
   slidingSashRollers: MetaDataValue[];
   flyscreenSashRollers: MetaDataValue[];
+  hardware: MetaDataValue[];
+  rubberColors: MetaDataValue[];
   features: {
     defaultGstEnabled: boolean;
     defaultGstRate: number;
@@ -53,8 +56,9 @@ export interface Product {
   glassType: string;
   baseRate: number;
   unit: Unit;
+  category: ProductCategory;
   createdAt: number;
-  
+
   // Detailed Specs
   series?: string;
   glass?: string;
@@ -82,6 +86,8 @@ export interface Product {
   // Default Dimensions
   defaultWidth?: number;
   defaultHeight?: number;
+
+  customSpecs?: { label: string; value: string }[];
 }
 
 export interface Client {
@@ -112,6 +118,7 @@ export interface QuoteLineItem {
   colorCoating?: string;
   productionStatus?: 'pending' | 'manufacturing' | 'done' | 'dispatched' | 'reached';
   unit: Unit;
+  category?: ProductCategory;
   rate: number;
   discount: number; // Flat amount or percentage based on quote setting? Let's use amount for line items.
   subtotal: number; // Before line discount
@@ -135,6 +142,7 @@ export interface QuoteLineItem {
   flyscreenHandle?: string;
   slidingSashRoller?: string;
   flyscreenSashRoller?: string;
+  customSpecs?: { label: string; value: string }[];
 }
 
 export interface Quote {

@@ -86,7 +86,9 @@ export const supabaseService = {
           sliding_sash_roller: p.slidingSashRoller,
           flyscreen_sash_roller: p.flyscreenSashRoller,
           default_width: p.defaultWidth,
-          default_height: p.defaultHeight
+          default_height: p.defaultHeight,
+          category: p.category || 'Window',
+          custom_specs: p.customSpecs || []
         })));
       if (productsError) throw productsError;
     }
@@ -158,7 +160,9 @@ export const supabaseService = {
             handle: item.handle,
             flyscreen_handle: item.flyscreenHandle,
             sliding_sash_roller: item.slidingSashRoller,
-            flyscreen_sash_roller: item.flyscreenSashRoller
+            flyscreen_sash_roller: item.flyscreenSashRoller,
+            category: item.category || 'Window',
+            custom_specs: item.customSpecs || []
           })));
         if (itemsError) throw itemsError;
       }
@@ -380,7 +384,9 @@ export const supabaseService = {
         slidingSashRoller: p.sliding_sash_roller,
         flyscreenSashRoller: p.flyscreen_sash_roller,
         defaultWidth: p.default_width ? Number(p.default_width) : undefined,
-        defaultHeight: p.default_height ? Number(p.default_height) : undefined
+        defaultHeight: p.default_height ? Number(p.default_height) : undefined,
+        category: p.category || 'Window',
+        customSpecs: p.custom_specs || []
       })) || [],
       quotes: quotesData?.map(q => ({
         id: q.id,
@@ -437,7 +443,9 @@ export const supabaseService = {
           handle: item.handle,
           flyscreenHandle: item.flyscreen_handle,
           slidingSashRoller: item.sliding_sash_roller,
-          flyscreenSashRoller: item.flyscreen_sash_roller
+          flyscreenSashRoller: item.flyscreen_sash_roller,
+          category: item.category || 'Window',
+          customSpecs: item.custom_specs || []
         }))
       })) || [],
       inventoryItems: inventoryData?.map(i => ({

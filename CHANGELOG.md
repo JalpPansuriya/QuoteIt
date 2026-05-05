@@ -4,6 +4,24 @@ Format: [YYYY-MM-DD] | [vX.X.X] | [Type: Added/Fixed/Changed/Removed]
 
 ---
 
+## [1.7.0] — 2026-05-05
+
+### Added
+- **Dynamic Product Specifications**: Implemented a CRUD interface for user-defined metadata fields in both Catalog and Quote Builder.
+- **Fixed Glass Support**: Added specific logic for Fixed Glass items, including automated defaults and multi-pane (1-3) schematic visualization.
+- **Data Persistence**: Integrated `custom_specs` into the Supabase service and database schema for full cloud synchronization.
+
+### Changed
+- **PDF Layout Refinement**: Resized company logo and adjusted header spacing for a more balanced and professional document appearance.
+- **Schematic Visualization**: Updated `WindowSchematic` with thinner line weights for Fixed Glass and realistic glare effects.
+
+### Fixed
+- **Calculation Stability**: Added guards for `NaN` and infinite loops in the Quote Builder totals logic.
+- **Catalog Edit Bug**: Fixed a mapping error where custom specifications were lost when editing existing products.
+- **Database Schema**: Resolved a 400 error by adding missing `custom_specs` columns to Supabase tables.
+
+---
+
 ## [1.6.0] — 2026-05-01
 
 ### Added
